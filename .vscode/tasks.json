@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Phone: Universal Health Check",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/healthcheck.ps1",
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Phone: Sync Docs to Phone",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Phone: Deploy Host Scripts (ADB)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/push_host_scripts.ps1",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Phone: SSH Interactive Terminal",
+      "type": "shell",
+      "command": "ssh oppo@192.168.1.35",
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    }
+  ]
+}
