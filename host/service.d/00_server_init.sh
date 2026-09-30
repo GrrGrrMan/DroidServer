@@ -24,8 +24,8 @@ setprop service.adb.tcp.port 5555
 stop adbd
 start adbd
 
-# 4. Wait for Wi-Fi association and an IPv4 address on wlan0 (up to 30s)
-TIMEOUT=30
+# 4. Wait for Wi-Fi association and an IPv4 address on wlan0 (up to 90s for post-blackout router boot)
+TIMEOUT=90
 while [ $TIMEOUT -gt 0 ]; do
   if ip -4 addr show dev wlan0 | grep -q "inet "; then
     break

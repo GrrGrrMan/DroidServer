@@ -66,9 +66,11 @@ grep -qs " $CHROOT_DIR/tmp " /proc/mounts     || mount -t tmpfs tmpfs -o mode=17
 grep -qs " $CHROOT_DIR/mnt/adb " /proc/mounts      || mount -o bind /data/adb "$CHROOT_DIR/mnt/adb"
 grep -qs " $CHROOT_DIR/mnt/host-bin " /proc/mounts || mount -o bind /data/local/bin "$CHROOT_DIR/mnt/host-bin"
 
-# Pre-create runtime socket directories on tmpfs
+# Pre-create runtime socket directories on tmpfs with strict POSIX permissions
 mkdir -p "$CHROOT_DIR/run/tailscale"
 mkdir -p "$CHROOT_DIR/run/sshd"
+chmod 0755 "$CHROOT_DIR/run/tailscale"
+chmod 0755 "$CHROOT_DIR/run/sshd"
 
 # 2. Sync host DNS nameserver
 NAMESERVER=$(getprop net.dns1)
@@ -148,3 +150,4 @@ Managed by the unified platform init script `/data/adb/service.d/00_server_init.
 | **`special device /data/local/bin does not exist` when mounting from SSH** | Running `mount -o bind` from inside Debian. The container cannot see outside its jail; the host must push the bind-mount. | Define bind mounts exclusively within `/data/local/bin/chroot-debian.sh` on the Android host. |
 | **PM2 services do not auto-start after cold boot** | Missing quotes or improper argument passing in `00_server_init.sh`. | Verify `00_server_init.sh` invokes `/data/local/bin/chroot-debian.sh "su - oppo -c 'pm2 resurrect'"`. |
 | **`sudo: effective uid is not 0, nosuid error`** | The `/data` partition was remounted without the `suid` flag. | Run `mount -o remount,suid /data` on the Android host. |
+| **`Connection refused` on SSH (:22) after cold boot** | OpenSSH privsep directory `/run/sshd` on fresh tmpfs was group/world-writable (rejected by sshd). | Ensure `chroot-debian.sh` enforces `chmod 0755 "$CHROOT_DIR/run/sshd"`. Reset via `chmod 0755 /data/local/debian/run/sshd && /data/local/bin/chroot-debian.sh /usr/sbin/sshd`. |

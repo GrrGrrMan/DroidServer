@@ -28,9 +28,11 @@ grep -qs " $CHROOT_DIR/tmp " /proc/mounts     || mount -t tmpfs tmpfs -o mode=17
 grep -qs " $CHROOT_DIR/mnt/adb " /proc/mounts      || mount -o bind /data/adb "$CHROOT_DIR/mnt/adb"
 grep -qs " $CHROOT_DIR/mnt/host-bin " /proc/mounts || mount -o bind /data/local/bin "$CHROOT_DIR/mnt/host-bin"
 
-# Pre-create runtime socket directories on tmpfs
+# Pre-create runtime socket directories on tmpfs with strict POSIX permissions
 mkdir -p "$CHROOT_DIR/run/tailscale"
 mkdir -p "$CHROOT_DIR/run/sshd"
+chmod 0755 "$CHROOT_DIR/run/tailscale"
+chmod 0755 "$CHROOT_DIR/run/sshd"
 
 # 2. Sync host DNS nameserver
 NAMESERVER=$(getprop net.dns1)

@@ -115,3 +115,8 @@ fi
 # UFS Flash Protection: Route caches and bytecode to RAM (tmpfs)
 export PIP_CACHE_DIR="/dev/shm/.cache/pip"
 export PYTHONPYCACHEPREFIX="/dev/shm/.pycache"
+
+# Greet interactive SSH sessions with fastfetch
+if [ -x /usr/bin/fastfetch ]; then
+  fastfetch
+fi

@@ -121,8 +121,8 @@ setprop service.adb.tcp.port 5555
 stop adbd
 start adbd
 
-# 4. Wait for Wi-Fi association and an IPv4 address on wlan0 (up to 30s)
-TIMEOUT=30
+# 4. Wait for Wi-Fi association and an IPv4 address on wlan0 (up to 90s for post-blackout router boot)
+TIMEOUT=90
 while [ $TIMEOUT -gt 0 ]; do
   if ip -4 addr show dev wlan0 | grep -q "inet "; then
     break
@@ -154,7 +154,22 @@ setprop ctl.stop audioserver
 
 ---
 
-## 5. TRIAGE & FAILURE MODES
+## 5. SYSTEM INFORMATION & HARDWARE TELEMETRY (FASTFETCH)
+
+For fast terminal system diagnostics without `systemd` or desktop dependencies, upstream `fastfetch` is used.
+
+### Installation Standard (Flash Wear Protection)
+Because Debian 12 Bookworm does not include `fastfetch` in its core repository, the upstream ARM64 release is staged strictly in RAM `tmpfs` (`/tmp`) before installation to prevent UFS flash wear:
+
+```bash
+curl -sL https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-aarch64.deb -o /tmp/fastfetch.deb
+sudo apt install -y /tmp/fastfetch.deb
+rm -f /tmp/fastfetch.deb
+```
+
+---
+
+## 6. TRIAGE & FAILURE MODES
 
 | Symptom | Probable Root Cause | Resolution Protocol |
 | :--- | :--- | :--- |

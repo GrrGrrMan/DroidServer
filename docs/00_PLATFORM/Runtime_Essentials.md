@@ -17,7 +17,7 @@ Because systemd is absent as PID 1 inside the Android chroot namespace, standard
 | **pip** | `/usr/bin/pip3` | Debian 12 Upstream (PEP 668) | `PIP_CACHE_DIR` pinned to `/dev/shm/.cache/pip` |
 | **PM2** | `/usr/bin/pm2` | Global npm package (Latest) | Process runtime logs streamed to `/dev/shm` |
 | **Database / CLI** | `/usr/bin/sqlite3`, `/usr/bin/jq` | Debian 12 Upstream | Persistent DBs stored on flash in `/var/lib/` |
-
+| **System Info / CLI**| `/usr/bin/fastfetch` | Upstream ARM64 Deb | Download staged in RAM `/tmp` tmpfs |
 ---
 
 ## 2. NODE.JS 24 LTS CANONICAL STACK (NODESOURCE)
@@ -139,7 +139,22 @@ To restore active PM2 workloads automatically after a container soft-restart or 
 
 ---
 
-## 5. TRIAGE & FAILURE MODES
+## 5. SYSTEM INFORMATION & HARDWARE TELEMETRY (FASTFETCH)
+
+For fast terminal system diagnostics without `systemd` or desktop dependencies, upstream `fastfetch` is used.
+
+### Installation Standard (Flash Wear Protection)
+Because Debian 12 Bookworm does not include `fastfetch` in its core repository, the upstream ARM64 release is staged strictly in RAM `tmpfs` (`/tmp`) before installation to prevent UFS flash wear:
+
+```bash
+curl -sL https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-aarch64.deb -o /tmp/fastfetch.deb
+sudo apt install -y /tmp/fastfetch.deb
+rm -f /tmp/fastfetch.deb
+```
+
+---
+
+## 6. TRIAGE & FAILURE MODES
 
 | Symptom | Probable Root Cause | Resolution Protocol |
 | :--- | :--- | :--- |
