@@ -1,6 +1,6 @@
 # Host_Recovery (Sub-Tab: 00_PLATFORM)
 
-> **Scope:** Bootloader recovery, low-level MTK BROM unbricking, persistent Magisk root configuration, ColorOS 11 background daemon defeat, and permanent network ADB provisioning.  
+> **Scope:** Bootloader recovery, low-level MTK BROM unbricking, persistent Magisk root configuration, ColorOS 11 background daemon defeat, unified boot orchestration, and permanent network ADB provisioning.  
 > **Blast Radius:** **CRITICAL**. Errors here cause bootloops, loss of root authority, or permanent loss of remote headless communication.
 
 ---
@@ -64,15 +64,6 @@ magisk --sqlite "INSERT OR REPLACE INTO settings (key,value) VALUES ('su_access'
 magisk --sqlite "INSERT OR REPLACE INTO policies (uid,policy,until,logging,notification) VALUES (2000,2,0,1,1);"
 ```
 
-### Verification
-
-**`[Host:Android#]`**
-```bash
-magisk --sqlite "SELECT * FROM settings WHERE key IN ('su_auto_response','su_access');"
-magisk --sqlite "SELECT * FROM policies WHERE uid=2000;"
-# Expect: su_auto_response|1, su_access|3, and 2000|2|0|1|1
-```
-
 ---
 
 ## 3. PERMANENT WORKSTATION RSA AUTHORIZATION (adb_keys)
@@ -95,23 +86,19 @@ adb shell "su -c '
 
 ---
 
-## 4. PERSISTENT PLATFORM INITIALIZER (service.d)
+## 4. UNIFIED PLATFORM INITIALIZER (service.d)
 
-ColorOS 11 automatically disables Developer Options after 10 minutes and suspends Wi-Fi radios when the screen is off. Magisk's late-start init engine executes this script on every boot to override OEM power policies and lock port 5555 open.
+ColorOS 11 automatically disables Developer Options after 10 minutes and suspends Wi-Fi radios when the screen is off. Magisk's late-start init engine executes this unified script on cold boot to orchestrate the entire boot pipeline, eliminate race conditions, pin network routes, and execute surgical headless RAM reclaim:
 
-* **File Path:** `/data/adb/service.d/00_platform_init.sh`  
+* **File Path:** `/data/adb/service.d/00_server_init.sh`  
 * **File Mode:** `755` (`-rwxr-xr-x`)
 
-### Deployment Script
-
-**`[Workstation:PS>]`**
-```powershell
-@'
-su -c 'cat << "EOF" > /data/adb/service.d/00_platform_init.sh
+**`[Host:Android#]`**
+```bash
 #!/system/bin/sh
 # Wait until Android framework is fully initialized
 while [ "$(getprop sys.boot_completed)" != "1" ]; do
-  sleep 3
+  sleep 2
 done
 
 # 1. Defeat ColorOS Sleep & Developer Timeouts
@@ -133,10 +120,36 @@ setprop persist.adb.tcp.port 5555
 setprop service.adb.tcp.port 5555
 stop adbd
 start adbd
-EOF
-chmod 755 /data/adb/service.d/00_platform_init.sh
-'
-'@ | adb shell
+
+# 4. Wait for Wi-Fi association and an IPv4 address on wlan0 (up to 30s)
+TIMEOUT=30
+while [ $TIMEOUT -gt 0 ]; do
+  if ip -4 addr show dev wlan0 | grep -q "inet "; then
+    break
+  fi
+  sleep 1
+  TIMEOUT=$((TIMEOUT - 1))
+done
+
+# 5. Lock default gateway in routing table 'main'
+GATEWAY=$(ip route show dev wlan0 | grep default | awk '{print $3}')
+[ -z "$GATEWAY" ] && GATEWAY="192.168.1.1"
+ip route add default via "$GATEWAY" dev wlan0 table main 2>/dev/null || true
+ip rule add from all lookup main pref 30000 2>/dev/null || true
+
+# 6. Launch container daemons
+/data/local/bin/chroot-debian.sh "/usr/sbin/sshd"
+/data/local/bin/chroot-debian.sh "pm2 resurrect"
+/data/local/bin/chroot-debian.sh "su - oppo -c 'pm2 resurrect'"
+
+# 7. Settle network tunnels
+sleep 15
+
+# 8. Surgical Headless Kill-Switch: Reclaim ~3.5 GB RAM while preserving netd
+setprop ctl.stop zygote
+setprop ctl.stop zygote_secondary
+setprop ctl.stop surfaceflinger
+setprop ctl.stop audioserver
 ```
 
 ---
@@ -145,6 +158,6 @@ chmod 755 /data/adb/service.d/00_platform_init.sh
 
 | Symptom | Probable Root Cause | Resolution Protocol |
 | :--- | :--- | :--- |
-| **Wireless ADB connection refused (`192.168.1.35:5555`)** | Wi-Fi radio entered sleep state or `adbd` failed to bind to port. | Verify DHCP lease on router. If IP is active, connect USB cable (buck powered first), run `adb devices`, and verify property `getprop service.adb.tcp.port`. |
+| **Wireless ADB connection refused (`:5555`)** | Wi-Fi radio entered sleep state or `adbd` failed to bind to port. | Verify DHCP reservation. If IP is active, connect USB cable (buck powered first), run `adb devices`, and verify property `getprop service.adb.tcp.port`. |
 | **Device enters 5-second rhythmic USB disconnect loop** | Little Kernel AVB verification panic (Red State). | Hold Vol+ and Vol- to catch BROM with `mtkclient`. Reflash `vbmeta.img.empty` and verify `boot.img` integrity. |
 | **ADB shell hangs indefinitely when invoking `su`** | Magisk database policy reverted or `su_auto_response` was reset to prompt. | Re-execute the SQLite policy injection block in Section 2 to force UID 2000 auto-grant. |

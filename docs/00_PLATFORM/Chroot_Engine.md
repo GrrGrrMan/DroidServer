@@ -1,13 +1,13 @@
 # Chroot_Engine (Sub-Tab: 00_PLATFORM)
 
-> **Scope:** Native Debian 12 (Bookworm) ARM64 container runtime, kernel mount namespace bindings, setuid filesystem permissions, non-root user network access, OpenSSH daemon management, UFS flash cache redirection, host filesystem bind-mounting, and the headless `stop` memory reclaim mechanism.  
+> **Scope:** Native Debian 12 (Bookworm) ARM64 container runtime, kernel mount namespace bindings, setuid filesystem permissions, non-root user network access, OpenSSH daemon management, total UFS flash cache redirection (`/dev/shm`, `/run`, `/tmp`), host filesystem bind-mounting, and the surgical headless memory reclaim mechanism.  
 > **Blast Radius:** **MEDIUM TO HIGH**. Errors here invalidate userland permissions, break setuid execution for `sudo`, drop SSH terminal allocation, or lock non-root users out of the network stack.
 
 ---
 
 ## 1. MOUNT NAMESPACE HIERARCHY
 
-The native chroot executes directly atop the phone's Android Linux kernel (`4.14.186+`) with zero virtualization overhead. The following host kernel virtual filesystems and host directories are bound into `/data/local/debian/`:
+The native chroot executes directly atop the phone's Android Linux kernel (`4.14.186+`) with zero virtualization overhead. The following host kernel virtual filesystems, volatile tmpfs buffers, and host directories are bound into `/data/local/debian/`:
 
 ```text
 /data/local/debian/
@@ -15,12 +15,14 @@ The native chroot executes directly atop the phone's Android Linux kernel (`4.14
 ├── sys/           <── [sysfs]   Kernel hardware device tree and power control
 ├── dev/           <── [bind]    Hardware device nodes (/dev/urandom, null, zero)
 ├── dev/pts/       <── [devpts]  Virtual pseudo-terminal slaves (Mandatory for SSH/PTY)
-├── dev/shm/       <── [tmpfs]   Shared memory buffer in RAM (512 MB tmpfs; protects UFS flash)
+├── dev/shm/       <── [tmpfs]   Shared memory buffer in RAM (512 MB tmpfs; volatile logs/caches)
+├── run/           <── [tmpfs]   Volatile runtime sockets, PIDs, and lockfiles (tmpfs, mode 0755)
+├── tmp/           <── [tmpfs]   Volatile compiler, pip, and IPC scratchpad (256 MB tmpfs, mode 1777)
 ├── mnt/adb/       <── [bind]    Android Magisk root directory (/data/adb)
 └── mnt/host-bin/  <── [bind]    Android host script directory (/data/local/bin)
 ```
 
-* **Total Expected Active Mounts:** Exactly `7`.
+* **Total Expected Active Mounts:** Exactly `9`.
 
 ---
 
@@ -30,6 +32,7 @@ This master host script handles filesystem binding, host bind-mount exposition, 
 
 * **Host Path:** `/data/local/bin/chroot-debian.sh`  
 * **Host Permissions:** `755` (`-rwxr-xr-x`)
+* **Mount Guarding:** Mount checks parse `/proc/mounts` directly to prevent duplicate mount stacking bugs caused by Toybox `mountpoint` false-negatives on same-filesystem bind mounts.
 
 **`[Host:Android#]`**
 ```bash
@@ -40,20 +43,32 @@ CHROOT_DIR="/data/local/debian"
 setprop net.hostname oppo
 mount -o remount,suid /data
 
-# 1. Mount virtual kernel filesystems and host directories if not active
-mountpoint -q "$CHROOT_DIR/proc" || mount -t proc proc "$CHROOT_DIR/proc"
-mountpoint -q "$CHROOT_DIR/sys" || mount -t sysfs sys "$CHROOT_DIR/sys"
-mountpoint -q "$CHROOT_DIR/dev" || mount -o bind /dev "$CHROOT_DIR/dev"
+# 1. Mount virtual kernel filesystems using /proc/mounts checks (prevents duplicate stacking)
+grep -qs " $CHROOT_DIR/proc " /proc/mounts || mount -t proc proc "$CHROOT_DIR/proc"
+grep -qs " $CHROOT_DIR/sys " /proc/mounts  || mount -t sysfs sys "$CHROOT_DIR/sys"
+grep -qs " $CHROOT_DIR/dev " /proc/mounts  || mount -o bind /dev "$CHROOT_DIR/dev"
 
+# Ensure target directories exist
 mkdir -p "$CHROOT_DIR/dev/pts"
 mkdir -p "$CHROOT_DIR/dev/shm"
+mkdir -p "$CHROOT_DIR/run"
+mkdir -p "$CHROOT_DIR/tmp"
 mkdir -p "$CHROOT_DIR/mnt/adb"
 mkdir -p "$CHROOT_DIR/mnt/host-bin"
 
-mountpoint -q "$CHROOT_DIR/dev/pts" || mount -t devpts devpts "$CHROOT_DIR/dev/pts"
-mountpoint -q "$CHROOT_DIR/dev/shm" || mount -t tmpfs tmpfs -o size=512M "$CHROOT_DIR/dev/shm"
-mountpoint -q "$CHROOT_DIR/mnt/adb" || mount -o bind /data/adb "$CHROOT_DIR/mnt/adb"
-mountpoint -q "$CHROOT_DIR/mnt/host-bin" || mount -o bind /data/local/bin "$CHROOT_DIR/mnt/host-bin"
+# Mount pseudo-terminals and in-memory tmpfs partitions (Total 9 mounts)
+grep -qs " $CHROOT_DIR/dev/pts " /proc/mounts || mount -t devpts devpts -o rw,nosuid,noexec,relatime,mode=600,ptmxmode=0666 "$CHROOT_DIR/dev/pts"
+grep -qs " $CHROOT_DIR/dev/shm " /proc/mounts || mount -t tmpfs tmpfs -o size=512M "$CHROOT_DIR/dev/shm"
+grep -qs " $CHROOT_DIR/run " /proc/mounts     || mount -t tmpfs tmpfs -o mode=0755,nosuid,nodev "$CHROOT_DIR/run"
+grep -qs " $CHROOT_DIR/tmp " /proc/mounts     || mount -t tmpfs tmpfs -o mode=1777,nosuid,nodev,size=256M "$CHROOT_DIR/tmp"
+
+# Host bind mounts for maintenance (Guarded against same-filesystem mountpoint bugs)
+grep -qs " $CHROOT_DIR/mnt/adb " /proc/mounts      || mount -o bind /data/adb "$CHROOT_DIR/mnt/adb"
+grep -qs " $CHROOT_DIR/mnt/host-bin " /proc/mounts || mount -o bind /data/local/bin "$CHROOT_DIR/mnt/host-bin"
+
+# Pre-create runtime socket directories on tmpfs
+mkdir -p "$CHROOT_DIR/run/tailscale"
+mkdir -p "$CHROOT_DIR/run/sshd"
 
 # 2. Sync host DNS nameserver
 NAMESERVER=$(getprop net.dns1)
@@ -66,7 +81,7 @@ ENV_CMD="/usr/bin/env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:
 
 # 4. Execute passed command or open interactive bash login shell
 if [ -n "$1" ]; then
-  chroot "$CHROOT_DIR" $ENV_CMD /bin/bash -c "$@"
+  chroot "$CHROOT_DIR" $ENV_CMD /bin/bash -c "$*"
 else
   chroot "$CHROOT_DIR" $ENV_CMD /bin/bash --login
 fi
@@ -102,118 +117,34 @@ chmod 0440 /etc/sudoers.d/oppo
 * **Primary SSH Account:** `oppo@192.168.1.35`  
 * **Tailscale Remote SSH:** `oppo@oppo-server` (Passwordless / Keyless)
 
-### Host Configuration Files
-
-`/etc/hostname`:
-```text
-oppo
-```
-
-`/etc/hosts`:
-```text
-127.0.0.1   localhost oppo
-::1         localhost ip6-localhost ip6-loopback
-192.168.1.35 oppo
-```
-
 ---
 
 ## 5. UFS FLASH PROTECTION & VOLATILE RUNTIME CACHING
 
-The device uses soldered, non-replaceable UFS 2.1 NAND flash. All volatile runtime caching and bytecode compilation are pinned to RAM (`/dev/shm` tmpfs) to eliminate flash wear:
+The device uses soldered, non-replaceable UFS 2.1 NAND flash. All volatile runtime caching, temporary sockets, bytecode compilation, and daemon logs are completely pinned to RAM tmpfs buffers:
 
-### A. Userland Shell Environment (`~/.bashrc`)
-
-**`[Debian:oppo$]`**
-```bash
-export PIP_CACHE_DIR="/dev/shm/.cache/pip"
-export PYTHONPYCACHEPREFIX="/dev/shm/.pycache"
-```
-
-### B. Node Package Manager Configuration (`~/.npmrc`)
-
-**`[Debian:oppo$]`**
-```bash
-npm config set cache /dev/shm/.npm
-```
+1. **`/dev/shm` (512 MB tmpfs):** Application logs, `.cache/pip`, and `.npm`.
+2. **`/run` (tmpfs):** OpenSSH runtime state and UNIX sockets (`/run/tailscale/tailscaled.sock`).
+3. **`/tmp` (256 MB tmpfs):** Build artifacts, apt staging buffers, and ephemeral lockfiles.
+4. **Log Rotation Bounds:** Supervised via `pm2-logrotate` (capped at 5 MB per log with 3 retained backups) to prevent tmpfs memory saturation.
 
 ---
 
 ## 6. PERSISTENT CONTAINER AUTOSTART & RESURRECTION (service.d)
 
-Brings up Debian, starts OpenSSH, resurrects both root and user PM2 daemons (Tailscale + OmniRoute), and triggers the headless memory reclaim on cold boot:
-
-* **Host Path:** `/data/adb/service.d/01_chroot_init.sh`  
-* **Host Permissions:** `755` (`-rwxr-xr-x`)
-
-**`[Host:Android#]`**
-```bash
-#!/system/bin/sh
-# Wait until Android framework & network layer are fully initialized
-while [ "$(getprop sys.boot_completed)" != "1" ]; do
-  sleep 3
-done
-
-# 1. Mount virtual filesystems and launch OpenSSH daemon
-/data/local/bin/chroot-debian.sh "/usr/sbin/sshd"
-
-# 2. Resurrect Root PM2 (Restores Tailscale)
-/data/local/bin/chroot-debian.sh "pm2 resurrect"
-
-# 3. Resurrect User PM2 (Restores OmniRoute and application daemons)
-/data/local/bin/chroot-debian.sh "su - oppo -c 'pm2 resurrect'"
-
-# 4. Wait 20 seconds for network interfaces and tunnels to settle
-sleep 20
-
-# 5. Headless Kill-Switch: Reclaim ~3.5 GB of RAM from dead UI
-stop
-```
+Managed by the unified platform init script `/data/adb/service.d/00_server_init.sh` on cold boot:
+1. Waits for valid IPv4 network lease on `wlan0`.
+2. Locks the default gateway in routing table `main`.
+3. Brings up Debian, starts OpenSSH, and resurrects Root PM2 (Tailscale, Chrony, Net-Watchdog) and User PM2 (Docsify).
+4. Reclaims ~3.5 GB of RAM using surgical `ctl.stop` triggers on Zygote and SurfaceFlinger, preserving the native Linux `netd` daemon.
 
 ---
 
-## 7. INTERACTIVE HOST EDITING WORKFLOW (/mnt/adb & /mnt/host-bin)
-
-Because `/data/adb` and `/data/local/bin` are bind-mounted inside Debian, host platform scripts can be edited directly inside SSH using standard terminal editors (`nano`, `micro`) without needing ADB pipes or PowerShell escaping.
-
-**`[Debian:oppo$]`**
-```bash
-# Edit Magisk platform init scripts:
-sudo nano /mnt/adb/service.d/01_chroot_init.sh
-
-# Edit master container mount script:
-sudo nano /mnt/host-bin/chroot-debian.sh
-```
-
-> **Operational Guardrail:** Treat `/mnt/adb` and `/mnt/host-bin` as frozen maintenance backdoors. Daily services and daemons must be added via PM2 inside Debian userland rather than modifying host startup scripts.
-
----
-
-## 8. USERLAND CONTAINER SOFT-RESTART PROTOCOL
-
-Because software warm-reboots drop the MT6358 PMIC rails and trigger an unrecoverable power-off state on this hardware, **NEVER** reboot the Android host. Use this soft-restart protocol to reload services or recover from userland crashes:
-
-### From Management Workstation (PowerShell)
-
-**`[Workstation:PS>]`**
-```powershell
-adb -s 192.168.1.35:5555 shell "su -c 'pkill -u oppo; /data/local/bin/chroot-debian.sh /usr/sbin/sshd'"
-```
-
-### From Inside Debian Container
-
-**`[Debian:oppo$]`**
-```bash
-sudo pkill -TERM -u oppo && sudo /usr/sbin/sshd
-```
-
----
-
-## 9. TRIAGE & FAILURE MODES
+## 7. TRIAGE & FAILURE MODES
 
 | Symptom | Probable Root Cause | Resolution Protocol |
 | :--- | :--- | :--- |
-| **`/mnt/host-bin` or `/mnt/adb` is empty inside Debian** | Host bind-mount lines in `/data/local/bin/chroot-debian.sh` have not executed. | Verify host mount points via `su -c 'mount \| grep mnt'` or restart the container. |
-| **`special device /data/local/bin does not exist` when mounting from SSH** | Running `mount -o bind` from inside Debian. The container cannot see outside its jail; the host must push the bind-mount into `/data/local/debian/`. | Define bind mounts exclusively within `/data/local/bin/chroot-debian.sh` on the Android host. |
-| **PM2 services do not auto-start after cold boot** | Line 3 in `/data/adb/service.d/01_chroot_init.sh` is missing single quotes around `pm2 resurrect`. | Open `/mnt/adb/service.d/01_chroot_init.sh` in `nano` and ensure it reads `su - oppo -c 'pm2 resurrect'`. |
+| **Active mount count exceeds 9 (mount leak)** | Legacy `mountpoint -q` checks failed to detect bind mounts on the same filesystem. | Verify `chroot-debian.sh` uses `grep -qs " ... " /proc/mounts`. Peel duplicates with `umount -l /data/local/debian/mnt/*`. |
+| **`special device /data/local/bin does not exist` when mounting from SSH** | Running `mount -o bind` from inside Debian. The container cannot see outside its jail; the host must push the bind-mount. | Define bind mounts exclusively within `/data/local/bin/chroot-debian.sh` on the Android host. |
+| **PM2 services do not auto-start after cold boot** | Missing quotes or improper argument passing in `00_server_init.sh`. | Verify `00_server_init.sh` invokes `/data/local/bin/chroot-debian.sh "su - oppo -c 'pm2 resurrect'"`. |
 | **`sudo: effective uid is not 0, nosuid error`** | The `/data` partition was remounted without the `suid` flag. | Run `mount -o remount,suid /data` on the Android host. |

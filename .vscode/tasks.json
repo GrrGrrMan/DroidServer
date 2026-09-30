@@ -6,13 +6,7 @@
       "type": "shell",
       "command": "powershell -ExecutionPolicy Bypass -File ./workstation/healthcheck.ps1",
       "group": { "kind": "build", "isDefault": true },
-      "presentation": { "reveal": "always", "panel": "dedicated" }
-    },
-    {
-      "label": "Phone: Sync Docs to Phone",
-      "type": "shell",
-      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1",
-      "presentation": { "reveal": "always", "panel": "shared" }
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
     },
     {
       "label": "Phone: Deploy Host Scripts (ADB)",
@@ -21,9 +15,39 @@
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
-      "label": "Phone: SSH Interactive Terminal",
+      "label": "Phone: Deploy Container Files (ADB)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/push_container.ps1",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Phone: Run Container Provisioning (ADB)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/run_provision.ps1",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Phone: Container Userland Soft-Restart",
+      "type": "shell",
+      "command": "adb -s 192.168.1.35:5555 shell \"su -c 'pkill -u oppo; /data/local/bin/chroot-debian.sh /usr/sbin/sshd'\"",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Phone: Sync Docs to Phone (SCP)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Phone: SSH Interactive Terminal (LAN)",
       "type": "shell",
       "command": "ssh oppo@192.168.1.35",
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Phone: SSH Interactive Terminal (Tailscale)",
+      "type": "shell",
+      "command": "ssh oppo@oppo-server",
       "presentation": { "reveal": "always", "panel": "dedicated" }
     }
   ]

@@ -130,7 +130,7 @@ pm2 save
 
 ### C. Auto-Revive Integration on Boot
 
-To restore active PM2 workloads automatically after a container soft-restart or cold boot, ensure the following execution hook exists in `/data/adb/service.d/01_chroot_init.sh` on the Android host:
+To restore active PM2 workloads automatically after a container soft-restart or cold boot, ensure the following execution hook exists in `/data/adb/service.d/00_server_init.sh` on the Android host:
 
 **`[Host:Android#]`**
 ```bash

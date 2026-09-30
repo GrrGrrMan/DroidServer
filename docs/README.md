@@ -11,11 +11,12 @@
 | :--- | :--- |
 | **Target Machine** | Oppo A91 (`CPH2021`) \| MediaTek Helio P70 (`MT6771V`) \| 8GB LPDDR4X \| 128GB UFS 2.1 |
 | **Host OS** | ColorOS 11 (Android 11) \| Magisk Root v30.7 \| Linux Kernel `4.14.186+` |
-| **Container Runtime** | Debian 12 (Bookworm) ARM64 Native Chroot (0% PRoot Virtualization Loss) |
-| **Installed Runtimes** | Python 3.11.2 (PEP 668 / venv) \| Node.js 24 LTS (`v24.21.0` / `npm 11.x`) \| PM2 Daemon Supervisor |
+| **Container Runtime** | Debian 12 (Bookworm) ARM64 Native Chroot (9 Canonical Mounts) |
+| **Installed Runtimes** | Python 3.11.2 (PEP 668 / venv) \| Node.js 24 LTS (`v24.x` / `npm 11.x`) \| PM2 Daemon Supervisor |
+| **Resilience Daemons** | Self-healing L3 Network Watchdog \| Chrony NTP Timesync \| PM2 Logrotate |
 | **Mesh Remote Access** | Tailscale WireGuard Overlay (`100.x.y.z`) \| Tailscale SSH (`oppo@oppo-server`) |
-| **Flash Endurance** | Ephemeral runtime caches (`pip`, `.pycache`, `npm`) redirected to `/dev/shm` (tmpfs) |
-| **Physical State** | Headless (Display Shattered/Dead) \| DC Regulated Dummy Battery (4.00V DC) |
+| **Flash Endurance** | Ephemeral caches, runtime sockets, and compile scratchpads on tmpfs (`/dev/shm`, `/run`, `/tmp`) |
+| **Physical State** | Headless (Display Dead) \| DC Regulated Dummy Battery (3.93V - 4.00V DC) |
 | **Primary Endpoint** | `192.168.1.35` (Static DHCP Reservation) \| Hostname: `oppo` |
 | **Primary SSH Access** | `oppo@192.168.1.35:22` (Passwordless `sudo`) \| Fallback: `root@192.168.1.35:22` |
 
@@ -33,7 +34,7 @@ OppoA91/
 ├── 00_PLATFORM             <── INVARIANTS: Hardware, Android host, BROM unbrick, chroot engine
 │   ├── Hardware_Power      <── 4.00V calibration, BMS sleep-jump, PMIC latching, grounding
 │   ├── Host_Recovery       <── Magisk service.d, wireless ADB (5555), MTKClient raw restore
-│   ├── Chroot_Engine       <── Mount namespace script, suid userdata, OpenSSH, 'stop' RAM reclaim
+│   ├── Chroot_Engine       <── Mount namespace script, suid userdata, OpenSSH, surgical ctl.stop
 │   └── Runtime_Essentials  <── Node 24 LTS, Python 3.11, PM2 supervisor, UFS tmpfs caching
 │
 └── 01_SERVICES             <── PLUG-AND-PLAY WORKLOADS: Autonomous userland daemons
@@ -48,33 +49,23 @@ OppoA91/
 
 ## 2. UNIVERSAL MASTER HEALTH CHECK
 
-Execute from your workstation terminal to dynamically verify physical power, memory state, container filesystems, and listening ports across both the Android host and Debian container:
+Execute from your workstation terminal via `Ctrl+Shift+B` in VS Code or run:
 
 **`[Workstation:PS>]`**
 ```powershell
-adb -s 192.168.1.35:5555 shell "su -c '
-  echo \"=== 1. PMIC & BATTERY RAIL ===\";
-  dumpsys battery | grep -E \"voltage|level|status\";
-  uptime;
-  echo \"=== 2. MEMORY & HEADLESS STATE ===\";
-  free -m;
-  echo -n \"Zygote Status: \"; getprop init.svc.zygote;
-  echo \"=== 3. CHROOT MOUNTS ===\";
-  mount | grep \"/data/local/debian\" | wc -l | sed \"s/^/Active Mounts (Expect 7): /\";
-  echo \"=== 4. LISTENING PORTS (HOST + CHROOT) ===\";
-  netstat -tuln | grep -E \"LISTEN\";
-'"
+powershell -ExecutionPolicy Bypass -File ./workstation/healthcheck.ps1
 ```
 
 ### Healthy Output Baseline
 
 | Subsystem | Expected Metric | Diagnostic Implication |
 | :--- | :--- | :--- |
-| **Rail Voltage** | `3950` – `4050` mV | XL4015 buck operating within PMIC stable UVLO/OVP bounds |
-| **Available Memory** | `> 6,800 MB` Available | Android Zygote/GUI dead; RAM reclaimed for container (~850–900 MB used) |
+| **Rail Voltage** | `3930` – `4000` mV | XL4015 buck operating within PMIC stable UVLO/OVP bounds |
+| **Available Memory** | `> 6,500 MB` Available | Android UI dead; RAM reclaimed for container (~1.5–1.8 GB used) |
 | **Zygote Status** | Empty or `stopped` | SurfaceFlinger and display compositors halted |
-| **Active Mounts** | Exactly `7` | `proc`, `sys`, `dev`, `dev/pts`, `dev/shm`, `mnt/adb`, `mnt/host-bin` |
-| **Listening Ports** | Ports `5555`, `22`, + Daemons | Host ADB (:5555), Debian SSH (:22), Mosquitto (:1883), OmniRoute (:20128) |
+| **Netd Status** | `running` | Native Linux network manager preserved; DNS and routing tables intact |
+| **Active Mounts** | Exactly `9 of 9` | `proc`, `sys`, `dev`, `dev/pts`, `dev/shm`, `run`, `tmp`, `mnt/adb`, `mnt/host-bin` |
+| **Listening Ports** | Ports `5555`, `22`, `8080` + Daemons | Host ADB (:5555), Debian SSH (:22), Docsify (:8080) |
 
 ---
 
@@ -109,4 +100,4 @@ adb -s 192.168.1.35:5555 shell "su -c '
   Opportunistic kernel sleep is permanently locked off (`echo off > /sys/power/autosleep` and `echo oppo-server > /sys/power/wake_lock`) to guarantee 24/7 unthrottled CPU ticks.  
     
 * **Flash Wear Mitigation Rule:**  
-  Soldered UFS 2.1 flash must be protected from high-frequency writes. All package caches (`pip`, `npm`), intermediate bytecode (`.pycache`), and volatile logs must be pinned to RAM tmpfs buffers (`/dev/shm`).
+  Soldered UFS 2.1 flash must be protected from high-frequency writes. All package caches (`pip`, `npm`), intermediate bytecode (`.pycache`), runtime sockets, and volatile logs must be pinned to RAM tmpfs buffers (`/dev/shm`, `/run`, `/tmp`).

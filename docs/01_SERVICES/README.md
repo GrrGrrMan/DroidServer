@@ -1,6 +1,6 @@
 # 01_SERVICES (Dynamic Workload Dashboard)
 
-> **Role:** Parent management dashboard for userland servers, developer tooling, IoT brokers, and AI proxy gateways running inside the Debian 12 ARM64 container.  
+> **Role:** Parent management dashboard for userland servers, developer tooling, IoT brokers, and resilience daemons running inside the Debian 12 ARM64 container.  
 > **Blast Radius:** **LOW (ISOLATED)**. Failures here impact only specific userland applications. The underlying Linux kernel, Android host OS, network layer, and physical power delivery remain 100% stable.
 
 ---
@@ -32,25 +32,12 @@ Never hardcode service names into master monitoring scripts. Run these commands 
 **`[Workstation:PS>]`**
 ```powershell
 @'
+echo "=== Root PM2 Daemons ==="
+/data/local/bin/chroot-debian.sh "pm2 list"
+echo ""
+echo "=== User (oppo) PM2 Daemons ==="
 /data/local/bin/chroot-debian.sh "su - oppo -c 'pm2 list'"
 '@ | adb -s 192.168.1.35:5555 shell su
-```
-```powershell
-adb -s 192.168.1.35:5555 shell "su -c 'chroot /data/local/debian ss -tulpn | grep LISTEN'"
-```
-
-### B. Discover Top Memory & CPU Consuming Container Services
-
-**`[Workstation:PS>]`**
-```powershell
-adb -s 192.168.1.35:5555 shell "su -c 'chroot /data/local/debian ps -eo pid,user,comm,%mem,%cpu --sort=-%mem | head -n 15'"
-```
-
-### C. Check PM2 Supervised Workloads
-
-**`[Workstation:PS>]`**
-```powershell
-adb -s 192.168.1.35:5555 shell "su -c 'chroot /data/local/debian su - oppo -c \"pm2 list\"'"
 ```
 
 ---
@@ -61,7 +48,7 @@ adb -s 192.168.1.35:5555 shell "su -c 'chroot /data/local/debian su - oppo -c \"
 
 Because the Debian userland runs inside an Android-managed Linux mount namespace without systemd as PID 1, all `systemctl` commands will fail. All background daemons and scripts must be supervised via:
 
-* **PM2:** Default process supervisor for Node.js, Python virtualenvs, and shell background daemons.  
+* **PM2:** Default process supervisor for Node.js, Python virtualenvs, and background shell scripts.  
 * **Traditional POSIX `/etc/init.d/` Scripts:** Used for system packages with legacy sysvinit wrappers (e.g., Mosquitto).  
 * **Standalone Foreground Wrappers:** Launched within persistent terminal multiplexers (`tmux` / `screen`) with direct PID capture.
 
@@ -70,14 +57,14 @@ Because the Debian userland runs inside an Android-managed Linux mount namespace
 The Debian chroot shares the network stack, loopback interface, and local IP (`192.168.1.35`) directly with the Android host:
 
 * **Port Collision Rule:** **NEVER** bind a container service to port `5555` (permanently reserved for host ADB).  
-* **Privileged Ports:** Container services running under root (UID 0) can bind directly to standard low ports (e.g., `:22`, `:80`, `:1883`, `:20128`).
+* **Privileged Ports:** Container services running under root (UID 0) can bind directly to standard low ports (e.g., `:22`, `:80`, `:123`, `:1883`, `:20128`).
 
 ### Flash Wear Minimization (UFS 2.1 Longevity)
 
 The device uses soldered, non-replaceable UFS 2.1 NAND flash:
 
-* High-frequency runtime logs must be routed to volatile RAM via `/dev/shm/[service_name].log` (tmpfs) rather than writing un-rotated log files to disk.  
-* Configure all application-level log rotators with strict size boundaries (<10 MB).
+* All high-frequency runtime logs are routed to volatile RAM via `/dev/shm/[service_name].log` (tmpfs).  
+* Both Root and User PM2 instances are bounded via `pm2-logrotate` (5 MB per log, 3 rotations retained) to prevent `/dev/shm` tmpfs memory exhaustion.
 
 ### The Headless Automation & Scraper Boundary
 
@@ -87,17 +74,21 @@ The device uses soldered, non-replaceable UFS 2.1 NAND flash:
 
 ---
 
-## 3. ACTIVE PORT ALLOCATION REGISTRY
+## 3. ACTIVE PORT & SERVICE REGISTRY
 
 | Service / Daemon | Port / Endpoint | Protocol / User | Lifecycle Supervisor |
 | :--- | :--- | :--- | :--- |
-| **Host ADB Daemon** | TCP `:5555` | Android Host (`adbd`) | Android init (`service.d`) |
+| **Host ADB Daemon** | TCP `:5555` | Android Host (`adbd`) | Android init (`00_server_init.sh`) |
 | **Debian OpenSSH** | TCP `:22` | Debian Root / `oppo` | `chroot-debian.sh` (`/usr/sbin/sshd`) |
-| **Docsify Portal** | TCP `:8080` | Debian (`oppo`) | PM2 (`docs-portal`) |
-| **Mosquitto MQTT** | TCP `:1883` | Debian (`mosquitto`) | `/etc/init.d/mosquitto` |
-| **OmniRoute Proxy** | TCP `:20128` | Debian (`oppo`) | PM2 (`omniroute`) |
-| **AliShopper Worker** | TCP `:20129` | Debian (`oppo`) | PM2 (`alishopper`) |
-| **PaperMC Server** | TCP `:25565` | Debian (`oppo`) | `tmux` / `screen` session |
+| **Tailscale Daemon** | WireGuard / Mesh (`100.x.y.z`) | Debian Root | Root PM2 (`tailscaled`) |
+| **Chrony NTP** | UDP `:123` (Client) | Debian Root | Root PM2 (`chrony`) |
+| **Network Watchdog** | Layer 3 Keepalive | Debian Root | Root PM2 (`net-watchdog`) |
+| **PM2 Logrotate** | Memory Guard (5MB cap) | Debian Root & `oppo` | PM2 Module (`pm2-logrotate`) |
+| **Docsify Portal** | TCP `:8080` | Debian (`oppo`) | User PM2 (`docs-portal`) |
+| **Mosquitto MQTT** | TCP `:1883` | Debian (`mosquitto`) | `/etc/init.d/mosquitto` (Pending) |
+| **OmniRoute Proxy** | TCP `:20128` | Debian (`oppo`) | User PM2 (`omniroute` - Pending) |
+| **AliShopper Worker**| TCP `:20129` | Debian (`oppo`) | User PM2 (`alishopper` - Pending) |
+| **PaperMC Server** | TCP `:25565` | Debian (`oppo`) | `tmux` / `screen` session (Pending) |
 
 ---
 
