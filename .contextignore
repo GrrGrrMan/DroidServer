@@ -1,0 +1,6 @@
+# .contextignore
+*.dump.pm2
+root_dump.pm2
+*.png
+.git/
+/dev/shm
