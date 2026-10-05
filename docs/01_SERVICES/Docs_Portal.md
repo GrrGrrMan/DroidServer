@@ -1,7 +1,7 @@
 # Docs_Portal (Sub-Tab: 01_SERVICES)
 
 > **Scope:** Client-side Docsify single-page documentation engine served via lightweight asynchronous HTTP server with real-time search, Prism syntax highlighting, and 1-click code copying.  
-> **Port / Endpoint:** `TCP :8080` | Local Health Check: `curl -sI http://127.0.0.1:8080 | head -n 1`  
+> **Port / Endpoint:** Local `TCP :8080` | Out-of-Band: `https://grrgrrman.github.io/OppoA91/` | Local Health Check: `curl -sI http://127.0.0.1:8080 | head -n 1`  
 > **Lifecycle Supervisor:** PM2 under user `oppo` (UID 1000)
 
 ---

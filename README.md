@@ -55,4 +55,5 @@ powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1
 * **Local SSH:** `ssh oppo@192.168.1.35` (Port `22`, passwordless `sudo`)
 * **Tailscale SSH:** `ssh oppo@oppo-server` (Keyless out-of-band mesh)
 * **Wireless ADB:** `adb connect 192.168.1.35:5555`
-* **Documentation Portal:** `http://192.168.1.35:8080` (or `http://oppo-server:8080`)
+* **Documentation Portal (Local):** `http://192.168.1.35:8080` (or `http://oppo-server:8080`)
+* **Documentation Portal (Out-of-Band):** `https://grrgrrman.github.io/OppoA91/`
