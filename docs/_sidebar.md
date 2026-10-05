@@ -16,4 +16,5 @@
   * [Tailscale Overlay](01_SERVICES/Tailscale.md)
   * [OmniRoute Proxy](01_SERVICES/Omniroute.md)
   * [Mosquitto MQTT](01_SERVICES/Mosquitto.md)
+  * [Playwright Anti-Pattern](01_SERVICES/Playwright.md)
   * [Service Template Contract](01_SERVICES/_TEMPLATE.md)

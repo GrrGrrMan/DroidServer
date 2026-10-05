@@ -61,7 +61,8 @@ Run inside an elevated shell (`adb shell su`) to permanently grant root to UID 2
 ```bash
 magisk --sqlite "INSERT OR REPLACE INTO settings (key,value) VALUES ('su_auto_response',1);"
 magisk --sqlite "INSERT OR REPLACE INTO settings (key,value) VALUES ('su_access',3);"
-magisk --sqlite "INSERT OR REPLACE INTO policies (uid,policy,until,logging,notification) VALUES (2000,2,0,1,1);"
+magisk --sqlite "INSERT OR REPLACE INTO settings (key,value) VALUES ('su_notification',0);"
+magisk --sqlite "INSERT OR REPLACE INTO policies (uid,policy,until,logging,notification) VALUES (2000,2,0,0,0);"
 ```
 
 ---
@@ -176,3 +177,5 @@ rm -f /tmp/fastfetch.deb
 | **Wireless ADB connection refused (`:5555`)** | Wi-Fi radio entered sleep state or `adbd` failed to bind to port. | Verify DHCP reservation. If IP is active, connect USB cable (buck powered first), run `adb devices`, and verify property `getprop service.adb.tcp.port`. |
 | **Device enters 5-second rhythmic USB disconnect loop** | Little Kernel AVB verification panic (Red State). | Hold Vol+ and Vol- to catch BROM with `mtkclient`. Reflash `vbmeta.img.empty` and verify `boot.img` integrity. |
 | **ADB shell hangs indefinitely when invoking `su`** | Magisk database policy reverted or `su_auto_response` was reset to prompt. | Re-execute the SQLite policy injection block in Section 2 to force UID 2000 auto-grant. |
+| **Host CPU pinned at 100% by `app_process` / `magiskd` workers** | Magisk attempting to dispatch Toast notifications / su logs to Android's `ActivityManager`, which is dead after `ctl.stop zygote`. | Set `logging=0`, `notification=0`, and `su_notification=0` in Magisk SQLite policy. Terminate child `magiskd` workers while preserving master daemon PID 583. |
+| **Detached background jobs stack up on host** | Background processes (`&`) spawned over ADB without stdout/stderr redirection (`>/dev/null 2>&1 &`) leave remote sessions alive after client disconnect. | Always manage background daemons via PM2 inside Debian userland; avoid raw `&` background tasks on the Android host. |

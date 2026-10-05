@@ -119,3 +119,11 @@ Applying 4.00V to the battery pads after a mains blackout restores voltage to th
 1. **Mini-UPS Integration:** Install a 9V/12V DC router mini-UPS inline before the PD/QC decoy board to maintain uninterrupted rail uptime through mains cuts.  
 2. **Parallel $V_{\text{BUS}}$ Tap:** Tap a secondary 5V step-down regulator from the same 9V input to feed the phone's USB-C port. This simultaneously asserts `VBUS_DET`, satisfying LK charger checks and enabling auto-boot on AC power restore.  
 3. **RC Auto-Pulse Circuit:** Wire a small RC delay circuit (~22 µF + 100 kΩ) across the power button flex pads to deliver a simulated 1.5-second `PWRKEY` ground pulse whenever the 4.00V rail powers up.
+
+### D. The 1% Battery & Fuel-Gauge Invariant (Cosmetic Counter Drift)
+
+* **Observed Telemetry:** Fastfetch and kernel sysfs report `Battery: 1%` after $\approx 16\text{ hours}$ of continuous uptime.
+* **Silicon Root Cause:** The MediaTek MT6358 fuel gauge tracks energy via Coulomb counting ($\int I \, dt$). Because power enters exclusively via dummy BMS tabs (`B+`/`B-`) rather than USB $V_{\text{BUS}}$, incoming charge current is absent. The counter steadily drains from its cold-boot OCV estimate ($\approx 80\%$ at $4.00\text{V}$) down to $0\text{ mAh}$, clamping sysfs capacity to `1%`.
+* **Zero Throttling Confirmed:** All-core 100% stress testing confirmed the Cortex-A73 performance cluster sustains full $2.11\text{ GHz}$ ($2106000\text{ kHz}$) clocks regardless of the 1% reading. Frequency step-downs to $1.85\text{ GHz}$ under sustained multi-core load are governed strictly by MediaTek's native thermal cooling trip points (`mtktscpu` active trip points at $56^\circ\text{C} / 57^\circ\text{C}$), completely decoupled from battery state.
+* **Zero Shutdown Risk:** Android's `BatteryService` is halted with Zygote (`ctl.stop zygote`), and the MT6358 hardware PMIC enforces shutdown solely on analog voltage ($V_{\text{BAT}} \le 3.40\text{V}$ UVLO).
+* **Operational Invariant:** Treat `Battery: 1%` as a cosmetic artifact. Monitor electrical health exclusively via analog rail voltage (`/sys/class/power_supply/battery/voltage_now`), which must remain within $3.93\text{V} – 4.00\text{V DC}$.

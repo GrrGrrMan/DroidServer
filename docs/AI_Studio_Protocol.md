@@ -35,10 +35,6 @@ Used for localized updates, bug fixes, or config changes. AI assistants must adh
 2. **Find in file (`Ctrl+F`):** A minimal, unique 1–3 line anchor snippet. **CRITICAL:** NEVER include triple-backtick code blocks inside the search anchor (prevents parser inversion).
 3. **Replace with (Strict $N+1$ Fencing):** If the replacement content contains standard triple-backtick code fences (` ``` `), the outer replacement fence MUST use **four backticks** (` ````markdown `). Never use the same backtick count for outer and inner fences.
 4. **Clean Content Only:** Strictly the replacement lines (no diff markers, no conversational headers).
-Used for localized updates, bug fixes, or config changes. AI assistants must provide a two-box target:
-1. **Target File:** Relative path to the file.
-2. **Find in file (`Ctrl+F`):** A minimal, unique 1–3 line anchor snippet.
-3. **Replace with:** A clean, copyable code box containing **strictly the replacement lines** (no diff markers, no metadata headers).
 
 ---
 

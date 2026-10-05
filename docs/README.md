@@ -41,8 +41,7 @@ OppoA91/
     ├── _TEMPLATE           <── Master contract: duplicate to add any new service
     ├── Tailscale           <── Zero-trust mesh VPN overlay & passwordless SSH
     ├── Mosquitto           <── MQTT broker and local event bus (:1883)
-    ├── OmniRoute           <── Local LLM gateway proxy router (:20128)
-    └── PaperMC             <── OpenJDK 21 headless Minecraft server (:25565)
+    └── OmniRoute           <── Local LLM gateway proxy router (:20128)
 ```
 
 ---
