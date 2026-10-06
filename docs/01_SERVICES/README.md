@@ -83,7 +83,7 @@ The device uses soldered, non-replaceable UFS 2.1 NAND flash:
 | **Tailscale Daemon** | WireGuard / Mesh (`100.x.y.z`) | Debian Root | Root PM2 (`tailscaled`) |
 | **Chrony NTP** | UDP `:123` (Client) | Debian Root | Root PM2 (`chrony`) |
 | **Network Watchdog** | Layer 3 Keepalive | Debian Root | Root PM2 (`net-watchdog`) |
-| **PM2 Logrotate** | Memory Guard (5MB cap) | Debian Root & `oppo` | PM2 Module (`pm2-logrotate`) |
+| **Log Guard Daemon** | Memory Guard (5MB cap) | Debian Root | Root PM2 (`log-guard`) |
 | **Platform Docs Portal** | TCP `:8080` | Debian (`oppo`) | User PM2 (`platform-docs`) |
 | **Workload App Registry** | TCP `:8081` | Debian (`oppo`) | User PM2 (`app-docs`) |
 

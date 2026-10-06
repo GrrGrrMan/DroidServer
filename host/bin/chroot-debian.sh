@@ -1,9 +1,9 @@
 #!/system/bin/sh
 CHROOT_DIR="/data/local/debian"
 
-# 0. Enforce host network hostname and setuid binaries on /data
+# 0. Enforce host hostname, SUID, and disable access-time flash writes on /data
 setprop net.hostname oppo
-mount -o remount,suid /data
+mount -o remount,suid,noatime /data
 
 # 1. Mount virtual kernel filesystems using /proc/mounts checks (prevents duplicate stacking)
 grep -qs " $CHROOT_DIR/proc " /proc/mounts || mount -t proc proc "$CHROOT_DIR/proc"
@@ -34,11 +34,19 @@ mkdir -p "$CHROOT_DIR/run/sshd"
 chmod 0755 "$CHROOT_DIR/run/tailscale"
 chmod 0755 "$CHROOT_DIR/run/sshd"
 
-# 2. Sync host DNS nameserver
-NAMESERVER=$(getprop net.dns1)
-[ -n "$NAMESERVER" ] && echo "nameserver $NAMESERVER" > "$CHROOT_DIR/etc/resolv.conf"
-echo "nameserver 1.1.1.1" >> "$CHROOT_DIR/etc/resolv.conf"
-echo "nameserver 8.8.8.8" >> "$CHROOT_DIR/etc/resolv.conf"
+# 2. In-Memory DNS: Ensure /etc/resolv.conf is a relative symlink to RAM tmpfs (/run/resolv.conf)
+if [ ! -L "$CHROOT_DIR/etc/resolv.conf" ]; then
+  rm -f "$CHROOT_DIR/etc/resolv.conf"
+  ln -sf ../run/resolv.conf "$CHROOT_DIR/etc/resolv.conf"
+fi
+
+# Populate DNS into RAM tmpfs once per boot session (zero flash wear)
+if [ ! -s "$CHROOT_DIR/run/resolv.conf" ]; then
+  NAMESERVER=$(getprop net.dns1)
+  [ -n "$NAMESERVER" ] && echo "nameserver $NAMESERVER" > "$CHROOT_DIR/run/resolv.conf"
+  echo "nameserver 1.1.1.1" >> "$CHROOT_DIR/run/resolv.conf"
+  echo "nameserver 8.8.8.8" >> "$CHROOT_DIR/run/resolv.conf"
+fi
 
 # 3. Clean POSIX Linux environment definition
 ENV_CMD="/usr/bin/env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HOME=/root USER=root TERM=xterm-256color LANG=C.UTF-8"

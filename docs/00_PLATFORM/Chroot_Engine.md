@@ -128,7 +128,7 @@ The device uses soldered, non-replaceable UFS 2.1 NAND flash. All volatile runti
 1. **`/dev/shm` (512 MB tmpfs):** Application logs, `.cache/pip`, and `.npm`.
 2. **`/run` (tmpfs):** OpenSSH runtime state and UNIX sockets (`/run/tailscale/tailscaled.sock`).
 3. **`/tmp` (256 MB tmpfs):** Build artifacts, apt staging buffers, and ephemeral lockfiles.
-4. **Log Rotation Bounds:** Supervised via `pm2-logrotate` (capped at 5 MB per log with 3 retained backups) to prevent tmpfs memory saturation.
+4. **Log Rotation Bounds:** Supervised via `log-guard` (`workloads/03_log_guard`), a lightweight 3 MB POSIX daemon capping logs at 5 MB with 2 retained backups.
 
 ---
 

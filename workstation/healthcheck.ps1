@@ -1,7 +1,11 @@
+$OutputEncoding = [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001 > $null
 $TARGET = "192.168.1.35:5555"
+
 Write-Host ">>> Querying Hardware & Container Telemetry on $TARGET..." -ForegroundColor Cyan
 
 @'
+# Hardware & Container Telemetry Probe
 echo "================================================================="
 echo " 1. HARDWARE PMIC & VOLTAGE RAIL TELEMETRY"
 echo "================================================================="
@@ -44,7 +48,26 @@ echo ""
 echo "================================================================="
 echo " 3. HEADLESS RUNTIME & MEMORY LIBERATION"
 echo "================================================================="
-free -m
+awk '
+  /MemTotal:/     {t=$2}
+  /MemFree:/      {f=$2}
+  /MemAvailable:/ {a=$2}
+  /Buffers:/      {b=$2}
+  /^Cached:/      {c=$2}
+  END {
+    used = (t - a) / 1024
+    avail = a / 1024
+    total = t / 1024
+    cache = (b + c) / 1024
+    pct_used = (used / total) * 100
+    pct_avail = (avail / total) * 100
+    printf "Total RAM Installed : %5d MB\n", total
+    printf "Active Working Set  : %5d MB (%4.1f%% active)\n", used, pct_used
+    printf "Reclaimable Cache   : %5d MB (Kernel Buffers + Cached)\n", cache
+    printf "True Available RAM  : %5d MB (%4.1f%% free for workloads)\n", avail, pct_avail
+  }
+' /proc/meminfo
+
 echo ""
 echo "Init Daemon States:"
 echo -n "  Zygote (UI Runtime)     : "

@@ -13,7 +13,7 @@
 | **Host OS** | ColorOS 11 (Android 11) \| Magisk Root v30.7 \| Linux Kernel `4.14.186+` |
 | **Container Runtime** | Debian 12 (Bookworm) ARM64 Native Chroot (9 Canonical Mounts) |
 | **Installed Runtimes** | Python 3.11.2 (PEP 668 / venv) \| Node.js 24 LTS (`v24.x` / `npm 11.x`) \| PM2 Daemon Supervisor |
-| **Resilience Daemons** | Self-healing L3 Network Watchdog \| Chrony NTP Timesync \| PM2 Logrotate |
+| **Resilience Daemons** | Self-healing L3 Network Watchdog \| Chrony NTP Timesync \| POSIX Log Guard |
 | **Mesh Remote Access** | Tailscale WireGuard Overlay (`100.x.y.z`) \| Tailscale SSH (`oppo@oppo-server`) |
 | **Flash Endurance** | Ephemeral caches, runtime sockets, and compile scratchpads on tmpfs (`/dev/shm`, `/run`, `/tmp`) |
 | **Physical State** | Headless (Display Dead) \| DC Regulated Dummy Battery (3.93V - 4.00V DC) |

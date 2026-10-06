@@ -11,3 +11,4 @@ node_modules
 # Oppo A91 Private & Local Sandboxes
 workloads/_local/*
 !workloads/_local/.gitkeep
+container/home/oppo/.ssh/authorized_keys
