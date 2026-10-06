@@ -1,15 +1,13 @@
-$OutputEncoding = [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-chcp 65001 > $null
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $TARGET = "192.168.1.35:5555"
 
 Write-Host ">>> Querying Hardware & Container Telemetry on $TARGET..." -ForegroundColor Cyan
 
 @'
-# Hardware & Container Telemetry Probe
 echo "================================================================="
 echo " 1. HARDWARE PMIC & VOLTAGE RAIL TELEMETRY"
 echo "================================================================="
-# Voltage: normalize microvolts vs millivolts
 V_RAW=$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null || cat /sys/class/power_supply/battery/batt_vol 2>/dev/null)
 if [ -n "$V_RAW" ]; then
   if [ "$V_RAW" -gt 100000 ] 2>/dev/null; then
@@ -26,7 +24,7 @@ BATT_STATUS=$(cat /sys/class/power_supply/battery/status 2>/dev/null || echo "Un
 echo "Battery Status    : $BATT_STATUS"
 
 echo -n "SoC Thermals      : "
-cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -n 4 | awk '{printf "%s°C ", $1/1000}'
+cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -n 4 | awk '{printf "%.1f C ", $1/1000}'
 echo ""
 echo -n "System Uptime     : "
 uptime
