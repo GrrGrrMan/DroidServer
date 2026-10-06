@@ -14,9 +14,9 @@ Supervised via PM2 under the unprivileged `oppo` user. Standard output and error
 
 **`[Debian:oppo$]`**
 ```bash
-pm2 start /usr/bin/python3 --name "docs-portal" \
-  --output /dev/shm/docs-portal.log \
-  --error /dev/shm/docs-portal.err \
+pm2 start /usr/bin/python3 --name "platform-docs" \
+  --output /dev/shm/platform-docs.log \
+  --error /dev/shm/platform-docs.err \
   --restart-delay 5000 \
   -- -m http.server 8080 --directory /var/www/oppo-docs
 ```
@@ -25,21 +25,21 @@ pm2 start /usr/bin/python3 --name "docs-portal" \
 
 **`[Debian:oppo$]`**
 ```bash
-pm2 stop docs-portal
+pm2 stop platform-docs
 ```
 
 ### Restart Daemon
 
 **`[Debian:oppo$]`**
 ```bash
-pm2 restart docs-portal
+pm2 restart platform-docs
 ```
 
 ### View Live Access & Error Logs (RAM Buffer)
 
 **`[Debian:oppo$]`**
 ```bash
-tail -n 50 -f /dev/shm/docs-portal.log
+tail -n 50 -f /dev/shm/platform-docs.log
 ```
 
 ---
@@ -51,8 +51,8 @@ tail -n 50 -f /dev/shm/docs-portal.log
 | **Webroot Directory** | `/var/www/oppo-docs/` | Static files, Markdown runbooks, and SPA entrypoint |
 | **SPA Entrypoint** | `/var/www/oppo-docs/index.html` | Docsify v4 core configuration and plugin loader |
 | **Sidebar Hierarchy** | `/var/www/oppo-docs/_sidebar.md` | Navigation tree structure |
-| **Volatile Access Logs**| `/dev/shm/docs-portal.log` | HTTP request traffic buffered in RAM tmpfs |
-| **Volatile Error Logs** | `/dev/shm/docs-portal.err` | Python server stack traces in RAM tmpfs |
+| **Volatile Access Logs**| `/dev/shm/platform-docs.log` | HTTP request traffic buffered in RAM tmpfs |
+| **Volatile Error Logs** | `/dev/shm/platform-docs.err` | Python server stack traces in RAM tmpfs |
 | **PM2 Process Config** | `container/pm2/ecosystem.config.js` | Tracked version-controlled startup definition |
 
 ---
@@ -62,10 +62,15 @@ tail -n 50 -f /dev/shm/docs-portal.log
 Docsify is a 100% client-side SPA. There is **no build step**, **no compiler**, and **no server restart** needed when updating documentation.
 
 ### From Workstation Terminal:
+
 ```powershell
-powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1
+# Sync both documentation portals (:8080 and :8081):
+powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1 -Target all
+
+# Or sync strictly the platform documentation portal (:8080):
+powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1 -Target platform
 ```
-*(Or in VS Code: press `Ctrl+Shift+B` and select `Phone: Sync Docs to Phone`)*
+*(Or in VS Code: press `Ctrl+Shift+B` and select `Phone: Sync All Docs (SCP)`)*
 
 Once SCP finishes transferring files, refresh `http://192.168.1.35:8080` in your browser. The updates render instantly.
 
@@ -75,7 +80,7 @@ Once SCP finishes transferring files, refresh `http://192.168.1.35:8080` in your
 
 | Symptom | Probable Root Cause | Resolution Protocol |
 | :--- | :--- | :--- |
-| **`Connection refused` on `:8080`** | `docs-portal` crashed or process supervisor died. | 1. Check process table: `/data/local/bin/chroot-debian.sh "su - oppo -c 'pm2 status'"`.<br>2. Inspect RAM errors: `cat /dev/shm/docs-portal.err`.<br>3. Restart process. |
+| **`Connection refused` on `:8080`** | `platform-docs` crashed or process supervisor died. | 1. Check process table: `/data/local/bin/chroot-debian.sh "su - oppo -c 'pm2 status'"`.<br>2. Inspect RAM errors: `cat /dev/shm/platform-docs.err`.<br>3. Restart process. |
 | **Blank white screen in browser** | A file linked in `_sidebar.md` is 0 bytes or missing. | Ensure all `.md` files have at least a minimal title or status stub. Verify browser console (`F12`) for 404 paths. |
 | **Sidebar navigation missing** | `_sidebar.md` is missing or `loadSidebar: true` disabled. | Verify `_sidebar.md` exists in `/var/www/oppo-docs/`. Check `index.html` configuration. |
 | **`SCP: Permission denied` during sync** | `/var/www/oppo-docs` ownership reverted to root. | Reset userland ownership: `/data/local/bin/chroot-debian.sh "chown -R oppo:oppo /var/www/oppo-docs"`. |
@@ -89,9 +94,9 @@ To unregister the service and delete web files:
 **`[Debian:oppo$]`**
 ```bash
 # 1. Stop and remove from PM2
-pm2 delete docs-portal && pm2 save
+pm2 delete platform-docs && pm2 save
 
 # 2. Wipe webroot and RAM buffers
 rm -rf /var/www/oppo-docs
-rm -f /dev/shm/docs-portal.log /dev/shm/docs-portal.err
+rm -f /dev/shm/platform-docs.log /dev/shm/platform-docs.err
 ```

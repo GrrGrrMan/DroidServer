@@ -37,11 +37,11 @@ OppoA91/
 │   ├── Chroot_Engine       <── Mount namespace script, suid userdata, OpenSSH, surgical ctl.stop
 │   └── Runtime_Essentials  <── Node 24 LTS, Python 3.11, PM2 supervisor, UFS tmpfs caching
 │
-└── 01_SERVICES             <── PLUG-AND-PLAY WORKLOADS: Autonomous userland daemons
-    ├── _TEMPLATE           <── Master contract: duplicate to add any new service
+└── 01_SERVICES             <── WORKLOAD CONTRACTS & CORE INFRASTRUCTURE
+    ├── _TEMPLATE           <── Master contract: blueprint for modular workloads
+    ├── Docs_Portal         <── Dual Docsify engines (:8080 platform & :8081 registry)
     ├── Tailscale           <── Zero-trust mesh VPN overlay & passwordless SSH
-    ├── Mosquitto           <── MQTT broker and local event bus (:1883)
-    └── OmniRoute           <── Local LLM gateway proxy router (:20128)
+    └── Playwright          <── Anti-pattern case study: browser workload ban
 ```
 
 ---

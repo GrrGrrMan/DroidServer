@@ -86,17 +86,19 @@ The device uses soldered, non-replaceable UFS 2.1 NAND flash:
 | **PM2 Logrotate** | Memory Guard (5MB cap) | Debian Root & `oppo` | PM2 Module (`pm2-logrotate`) |
 | **Platform Docs Portal** | TCP `:8080` | Debian (`oppo`) | User PM2 (`platform-docs`) |
 | **Workload App Registry** | TCP `:8081` | Debian (`oppo`) | User PM2 (`app-docs`) |
-| **Mosquitto MQTT** | TCP `:1883` | Debian (`mosquitto`) | `/etc/init.d/mosquitto` (Pending) |
-| **OmniRoute Proxy** | TCP `:20128` | Debian (`oppo`) | User PM2 (`omniroute` - Pending) |
-| **AliShopper Worker**| TCP `:20129` | Debian (`oppo`) | User PM2 (`alishopper` - Pending) |
-| **PaperMC Server** | TCP `:25565` | Debian (`oppo`) | `tmux` / `screen` session (Pending) |
 
 ---
 
-## 4. THE SERVICE MODULE CONTRACT
+## 4. THE MODULAR WORKLOAD ARCHITECTURE (PORT :8081 REGISTRY)
 
-To deploy a new service, daemon, or background workload to this machine:
+To protect system integrity and eliminate documentation drift, application workloads are decoupled from the public platform documentation:
 
-1. **Do not** add operational parameters or service commands directly to this dashboard tab.  
-2. Duplicate the clean contract located in the child tab `_TEMPLATE` into a new sub-tab under `01_SERVICES` (e.g., `01_SERVICES/OmniRoute`, `01_SERVICES/AliShopper`).  
-3. Fill out the operational parameters, lifecycle commands, and memory limits according to the template contract.
+1. **Autonomous Workload Units (`workloads/<name>/`):**  
+   Every userland service, background daemon, or tooling suite is deployed as a modular package containing:
+   * `install.sh`: Idempotent installation script using flash-safe helpers from `workloads/_lib/helpers.sh`.
+   * `uninstall.sh`: Clean, reversible teardown script purging packages, PM2 entries, and state.
+   * `docs.md`: Dedicated service runbook, port bindings, and health checks.
+2. **Private LAN Registry (`:8081`):**  
+   All `docs.md` files from `workloads/` (and private uncommitted modules in `workloads/_local/`) are dynamically aggregated into the Workload Registry served at `http://192.168.1.35:8081` via `sync_docs.ps1 -Target app`.
+3. **Blueprint Standard:**  
+   When drafting a new workload, use `workloads/_TEMPLATE/` as the implementation template and `docs/01_SERVICES/_TEMPLATE.md` as the operational contract reference.

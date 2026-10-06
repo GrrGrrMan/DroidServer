@@ -33,15 +33,21 @@
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
-      "label": "Phone: Sync Platform Docs (SCP)",
+      "label": "Phone: Sync All Docs (SCP)",
       "type": "shell",
-      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1",
+      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1 -Target all",
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
-      "label": "Phone: Sync App Docs (SCP)",
+      "label": "Phone: Sync Platform Docs (:8080)",
       "type": "shell",
-      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_app_docs.ps1",
+      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1 -Target platform",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Phone: Sync App Registry (:8081)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1 -Target app",
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {

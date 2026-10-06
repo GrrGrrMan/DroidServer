@@ -55,11 +55,12 @@ powershell -ExecutionPolicy Bypass -File ./workstation/push_container.ps1
 # Deploy modular workloads (00_base, 01_net_watchdog, etc.):
 powershell -ExecutionPolicy Bypass -File ./workstation/deploy_workload.ps1
 
-# Sync platform documentation portal (viewable at http://192.168.1.35:8080):
-powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1
+# Sync all documentation portals (Platform :8080 & App Registry :8081):
+powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1 -Target all
 
-# Compile and sync application registry (viewable at http://192.168.1.35:8081):
-powershell -ExecutionPolicy Bypass -File ./workstation/sync_app_docs.ps1
+# Or sync individually:
+# powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1 -Target platform
+# powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1 -Target app
 ```
 
 ---
