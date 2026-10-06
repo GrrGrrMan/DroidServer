@@ -25,16 +25,17 @@
 To prevent cognitive fatigue and token waste, AI assistants must deliver artifacts in one of two standardized modes:
 
 ### Mode A: Full Artifact Delivery (New Files / Complete Overhauls)
-Used exclusively when creating a new file or performing a total structural rewrite:
+Used exclusively when creating a new file, performing a structural rewrite, or when surgical patching risks parser inversion / ambiguity:
 * Wrapped in an outer fence of **four backticks** (` ````markdown ` or ` ````text `).
 * **Pure Content Only:** The content inside the fence must be 100% ready for 1-click copy-pasting into the target file. Never include meta-commentary, placeholders, or conversational remarks inside the artifact box.
 
 ### Mode B: Direct Pastable Find-and-Replace (Targeted Edits)
-Used for localized updates, bug fixes, or config changes. AI assistants must adhere to the **Three Golden Rules of Mode B Patches**:
+Used for small, localized updates, single bug fixes, or minor config adjustments. AI assistants must adhere to the **Three Golden Rules of Mode B Patches**:
 1. **Target File:** Relative path to the file.
-2. **Find in file (`Ctrl+F`):** A minimal, unique 1–3 line anchor snippet. **CRITICAL:** NEVER include triple-backtick code blocks inside the search anchor (prevents parser inversion).
+2. **Find in file (`Ctrl+F`):** A minimal, unique 1–3 line anchor snippet. **CRITICAL:** NEVER include triple-backtick code blocks or markdown headers inside the search anchor (prevents web UI parser inversion).
 3. **Replace with (Strict $N+1$ Fencing):** If the replacement content contains standard triple-backtick code fences (` ``` `), the outer replacement fence MUST use **four backticks** (` ````markdown `). Never use the same backtick count for outer and inner fences.
 4. **Clean Content Only:** Strictly the replacement lines (no diff markers, no conversational headers).
+5. **Fall Back to Mode A if Complex:** If an edit spans multiple blocks or nested code fences that risk breaking web UI renderers, deliver the complete file via **Mode A**.
 
 ---
 
@@ -68,19 +69,20 @@ To prevent string escaping collisions, shell syntax errors, and newline mangling
    '@ | adb -s 192.168.1.35:5555 shell su
    ```
    * Never use nested double quotes (`"su -c '...'"`).  
-   * Never rely on un-documented personal session aliases (e.g., `asu`).  
-   Multi-line shell scripts, ADB commands, or SSH pipes from PowerShell must use literal single-quoted heredocs:
-   ```powershell
-   @'
-   # Pure Linux syntax here. No escaping of quotes (") or variables ($) required.
-   echo "Hello from Linux"
-   '@ | adb shell su
-   ```
-   * Never use nested double quotes (`"su -c '...'"`).  
-   * Never rely on un-documented personal session aliases (e.g., `asu`).
-2. **Unix / POSIX Shells:**  
+   * Never rely on undocumented personal session aliases (e.g., `asu`).
+
+2. **PowerShell Variable Scope-Colon Trap (`$var:`):**  
+   In PowerShell, `$identifier:` is the namespace/scope operator (e.g., `$env:`, `$global:`, `$script:`). When a colon immediately follows a variable name inside double quotes (such as `"$TARGET_IP:5555"` or `"($Action: $Module)"`), PowerShell attempts to resolve the variable within a non-existent scope, evaluating it to `$null` or throwing a fatal `InvalidVariableReferenceWithDrive`.
+   * **The Standard:** Always enclose variables in explicit boundary braces when adjacent to colons or punctuation (`"${TARGET_IP}:5555"`, `"${Action} -> ${Module}"`) or pre-construct compound variables upfront (`$TARGET = "192.168.1.35:5555"`).
+
+3. **PowerShell `-f` Format Collision with POSIX Heredocs:**  
+   PowerShell's `-f` operator maps directly to .NET's `String.Format()`, which parses any curly braces `{...}` as integer substitution indexes. Passing a heredoc containing Bash/POSIX expansions (such as `${ACTION}.sh` or `${CHROOT_MOD_PATH}`) to `-f` causes .NET to throw a fatal `FormatError`.
+   * **The Standard:** NEVER invoke `-f` on heredocs containing Bash / shell script blocks. Pass parameters by prepending literal variable assignments (`"ACTION='$Action'`n" + @'...'@`) or by using environment variables.
+
+4. **Unix / POSIX Shells:**  
    Use standard heredocs (`cat << 'EOF' | ...`) or direct stdin redirection. Avoid terminal multiplexer wrapper traps (e.g. Kitty's `kitten ssh`).
-3. **CRLF Line-Ending Sanitization:**  
+
+5. **CRLF Line-Ending Sanitization:**  
    All deployment scripts targeting Linux hosts from Windows workstations must explicitly sanitize carriage returns (`sed -i 's/\r$//'` or `dos2unix`) before marking files executable.
 
 ---

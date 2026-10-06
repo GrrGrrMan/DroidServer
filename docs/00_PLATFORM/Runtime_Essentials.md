@@ -17,7 +17,8 @@ Because systemd is absent as PID 1 inside the Android chroot namespace, standard
 | **pip** | `/usr/bin/pip3` | Debian 12 Upstream (PEP 668) | `PIP_CACHE_DIR` pinned to `/dev/shm/.cache/pip` |
 | **PM2** | `/usr/bin/pm2` | Global npm package (Latest) | Process runtime logs streamed to `/dev/shm` |
 | **Database / CLI** | `/usr/bin/sqlite3`, `/usr/bin/jq` | Debian 12 Upstream | Persistent DBs stored on flash in `/var/lib/` |
-| **System Info / CLI**| `/usr/bin/fastfetch` | Upstream ARM64 Deb | Download staged in RAM `/tmp` tmpfs |
+| **System Info / CLI**| `/usr/bin/fastfetch` | Upstream ARM64 Deb (`workloads/04_fastfetch`) | Download staged in RAM `/tmp` tmpfs |
+| **Base CLI Suite** | `/usr/bin/htop`, `tmux`, `ncdu` | Debian 12 Upstream (`workloads/00_base`) | Declared in `packages.apt`; apt cache cleaned |
 ---
 
 ## 2. NODE.JS 24 LTS CANONICAL STACK (NODESOURCE)

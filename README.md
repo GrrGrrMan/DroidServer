@@ -52,8 +52,14 @@ powershell -ExecutionPolicy Bypass -File ./workstation/push_host_scripts.ps1
 # Deploy container userland configuration and dotfiles:
 powershell -ExecutionPolicy Bypass -File ./workstation/push_container.ps1
 
-# Sync documentation portal (viewable at http://192.168.1.35:8080):
+# Deploy modular workloads (00_base, 01_net_watchdog, etc.):
+powershell -ExecutionPolicy Bypass -File ./workstation/deploy_workload.ps1
+
+# Sync platform documentation portal (viewable at http://192.168.1.35:8080):
 powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1
+
+# Compile and sync application registry (viewable at http://192.168.1.35:8081):
+powershell -ExecutionPolicy Bypass -File ./workstation/sync_app_docs.ps1
 ```
 
 ---
@@ -63,7 +69,8 @@ powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1
 * **Local SSH:** `ssh oppo@192.168.1.35` (Port `22`, passwordless `sudo`)
 * **Tailscale SSH:** `ssh oppo@oppo-server` (Keyless out-of-band mesh)
 * **Wireless ADB:** `adb connect 192.168.1.35:5555`
-* **Documentation Portal (Local):** `http://192.168.1.35:8080` (or `http://oppo-server:8080`)
+* **Platform Docs Portal (Public):** `http://192.168.1.35:8080` (or `http://oppo-server:8080`)
+* **Workload App Registry (Private LAN):** `http://192.168.1.35:8081` (or `http://oppo-server:8081`)
 * **Documentation Portal (Out-of-Band):** `https://grrgrrman.github.io/OppoA91/`
 
 ---

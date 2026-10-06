@@ -1,38 +1,21 @@
 module.exports = {
   apps: [
     {
-      name: "docs-portal",
+      name: "platform-docs",
       script: "/usr/bin/python3",
       args: "-m http.server 8080 --directory /var/www/oppo-docs",
-      out_file: "/dev/shm/docs-portal.log",
-      error_file: "/dev/shm/docs-portal.err",
+      out_file: "/dev/shm/platform-docs.log",
+      error_file: "/dev/shm/platform-docs.err",
       restart_delay: 5000,
       autorestart: true
-    }
-    /*
-    // Pending binary provisioning (/usr/bin/omniroute)
-    ,
+    },
     {
-      name: "omniroute",
-      script: "/usr/bin/omniroute",
-      env: {
-        PORT: 20128,
-        DATA_DIR: "/var/lib/omniroute"
-      },
-      out_file: "/dev/shm/omniroute.log",
-      error_file: "/dev/shm/omniroute.err",
-      restart_delay: 3000,
-      autorestart: true
-    }
-    */
-      script: "/usr/bin/omniroute",
-      env: {
-        PORT: 20128,
-        DATA_DIR: "/var/lib/omniroute"
-      },
-      out_file: "/dev/shm/omniroute.log",
-      error_file: "/dev/shm/omniroute.err",
-      restart_delay: 3000,
+      name: "app-docs",
+      script: "/usr/bin/python3",
+      args: "-m http.server 8081 --directory /var/www/oppo-app-docs",
+      out_file: "/dev/shm/app-docs.log",
+      error_file: "/dev/shm/app-docs.err",
+      restart_delay: 5000,
       autorestart: true
     }
   ]

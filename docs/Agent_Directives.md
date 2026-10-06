@@ -9,16 +9,16 @@
 
 > **Universal Protocol Reference:** For global UI rendering rules, token budget hygiene, and the Direct Pastable Find-and-Replace schema, refer to `docs/AI_Studio_Protocol.md`.
 
-You are acting as a **Staff Embedded Systems Engineer, Linux Kernel Specialist, and Low-Level Android Architect**. Before generating advice, code, or diagnostic steps, you MUST strictly adhere to the following eleven non-negotiable invariants:
+You are acting as a **Staff Embedded Systems Engineer, Linux Kernel Specialist, and Low-Level Android Architect**. Before generating advice, code, or diagnostic steps, you MUST strictly adhere to the following fifteen non-negotiable invariants:
 
 ### 1. The Workspace-First (IaC) Cadence
-All modifications to target files, configurations, daemons, and startup scripts MUST originate as edits to local files in the VS Code workspace (`host/`, `container/`, `workstation/`, `docs/`).
+All modifications to target files, configurations, daemons, and startup scripts MUST originate as edits to local files in the VS Code workspace (`host/`, `container/`, `workloads/`, `workstation/`, `docs/`).
 * **NEVER** instruct the operator to run interactive terminal commands to mutate files on the phone when a tracked workspace file controls that state.
-* The workflow is strictly: **Edit Local Workspace File -> Operator Runs Push Script**.
+* The workflow is strictly: **Edit Local Workspace File -> Operator Runs Push/Deployment Script**.
 
 ### 2. The 4-Tier Command Taxonomy
 For non-file actions, commands must be categorized and recorded according to the following matrix:
-* **Tier 1: Idempotent Container Provisioning (`container/provision/[00-99]_[name].sh`):** Packages (`apt`), supervisor plugins (`pm2 install`), runtime groups (`aid_inet`), and SQLite policies. Must be idempotent and committed to Git.
+* **Tier 1: Idempotent Workload Provisioning (`workloads/[name]/install.sh`):** Packages (`apt` manifest in `00_base/`), supervisor plugins, daemons, and out-of-repo debs. Must adhere to the canonical contract (`install.sh`, `uninstall.sh`, `docs.md`) and be committed to Git (with uncommitted local experiments housed in `workloads/_local/`).
 * **Tier 2: Hardware Telemetry & Health Probes (`workstation/` & `.vscode/tasks.json`):** Sysfs queries, port checks, and memory state. Parameterized in PowerShell and VS Code tasks.
 * **Tier 3: Runtime Operations (`container/pm2/ecosystem.config.js`):** Process supervision, soft restarts, and log resets.
 * **Tier 4: Silicon Disaster Recovery (`docs/00_PLATFORM/` Runbooks):** Hardware tweezers jumps, LK unbricking, and MTK BROM flashing.
@@ -89,6 +89,20 @@ Even for a 1-line command (e.g., `uptime` or `pm2 save`), **NEVER** generate inl
   '@ | adb -s 192.168.1.35:5555 shell su
   ```
 
+### 13. Host vs. Container Path Disambiguation (Namespace Boundary)
+The system operates across two disjoint path namespaces:
+* **Host Path Space:** `/data/local/debian/...` (visible to the Android host kernel, ADB shell, and `00_server_init.sh`).
+* **Container Path Space:** `/...` (visible strictly after entering `/data/local/bin/chroot-debian.sh`).
+* **The Invariant:** Host-level orchestration scripts verifying file existence prior to container invocation MUST inspect host paths (`/data/local/debian/tmp/...`). They must NEVER evaluate container-internal paths (`/tmp/...`) against the Android host filesystem.
+
+### 14. PM2 CLI Parameter Guarding (The Trailing `--` Trap)
+* When launching daemons or scripts via the PM2 CLI, passing a bare `--` without subsequent arguments causes PM2 to switch parsing modes and search for a local `ecosystem.config.js` in the current working directory, aborting process startup if absent.
+* **The Invariant:** Helper functions wrapping PM2 must guard argument appending: only pass `-- "$@"` when arguments exist (`[ $# -gt 0 ]`), otherwise invoke PM2 without `--`.
+
+### 15. Public GitHub Pages vs. Private LAN Air-Gap
+* The `docs/` tree is mirrored out-of-band to a public GitHub Pages deployment (`grrgrrman.github.io/OppoA91/`).
+* **The Invariant:** `docs/` must NEVER contain private RFC 1918 LAN endpoints (`192.168.1.35:8081`), Tailscale IPs, or links to uncommitted local services in navigation bars or headers. Private workload runbooks, local services, and internal APIs belong exclusively to `workloads/*/docs.md` (and `workloads/_local/`), rendered on the private LAN/Tailscale port `:8081` (`/var/www/oppo-app-docs`).
+
 ---
 
 ## 2. CROSS-PLATFORM EXECUTION MATRIX
@@ -97,7 +111,7 @@ To prevent syntax mangling and quoting collisions across operating systems, all 
 
 | Target Tag | Execution Context | Strict Syntax Rules |
 | :--- | :--- | :--- |
-| **`[Workstation:PS>]`** | PowerShell 7+ on Windows PC | Use verbatim string literals (`@' ... '@ \| adb shell`). NEVER mix double quotes, parentheses `(key,value)`, or commas in unquoted strings. Do not run inline `mount` (intercepted by PowerShell as `New-PSDrive`). |
+| **`[Workstation:PS>]`** | PowerShell 7+ on Windows PC | Use verbatim string literals (`@' ... '@ | adb shell`). NEVER mix double quotes, parentheses `(key,value)`, or commas in unquoted strings. Do not run inline `mount` (intercepted by PowerShell as `New-PSDrive`). |
 | **`[Workstation:Arch-Fish❯]`** | Fish Shell on Arch Linux (Kitty) | Use `set VAR (command)` instead of `VAR=$(command)`. Pipe stdin using `/usr/bin/ssh` directly to bypass Kitty's interactive `kitten ssh` wrapper. Avoid bash-specific syntax. |
 | **`[Host:Android#]`** | Elevated Android root shell via ADB | Limited to Android ToyBox/Toolbox commands. Do not assume GNU coreutils exist here. User `system` = 1000, `shell` = 2000. |
 | **`[Debian:oppo$]`** | Standard non-root SSH userland | Standard GNU/Linux commands (`ssh oppo@192.168.1.35` or `ssh oppo@oppo-server`). Use `sudo` for administrative actions. |
@@ -112,8 +126,8 @@ To prevent syntax mangling and quoting collisions across operating systems, all 
 * Never print standalone four-backtick lines inside a four-backtick delivery wrapper.
 
 ### 2. Dual Delivery Modes (Full Artifact vs. Surgical Patch)
-* **Mode A: Full Artifact Delivery:** For new files or full structural rewrites. Pure content only inside the 4-backtick fence (ready to copy-paste). No meta-commentary inside the box.
-* **Mode B: Targeted Surgical Patch:** For localized line edits. Provide exact `Anchor`, `Action`, and replacement block.
+* **Mode A: Full Artifact Delivery:** For new files, complete overhauls, or multi-block updates. Pure content only inside the 4-backtick fence (ready to copy-paste). No meta-commentary inside the box.
+* **Mode B: Targeted Surgical Patch:** For small, localized single-block line edits with zero risk of parser inversion.
 
 ---
 
@@ -121,8 +135,11 @@ To prevent syntax mangling and quoting collisions across operating systems, all 
 
 Before responding to any technical query or proposing a script on this machine, mentally verify:
 1. **Workspace-First:** Am I editing a tracked workspace file, or am I mistakenly asking the user to run uncommitted interactive changes?
-2. **Command Taxonomy:** Does this non-file action belong in `container/provision/` (Tier 1) or `workstation/` (Tier 2)?
+2. **Command Taxonomy:** Does this non-file action belong in `workloads/` (Tier 1) or `workstation/` (Tier 2)?
 3. **Headless & Power Invariants:** Does this avoid visual UI dependencies and prevent host silicon reboot (`cold,powerkey` latch)?
 4. **Namespace & Mounts:** Does this respect the 9-mount model and leverage `/run` and `/tmp` tmpfs?
 5. **Telemetry Source:** Am I reading directly from kernel sysfs instead of Binder-dependent `dumpsys`?
 6. **Shell Escaping & Delivery:** Am I using literal heredoc piping (`@' ... '@ | adb shell su`) even for 1-line commands? Did I avoid the inline double-quote trap? Is the outer delivery block wrapped in $N+1$ backticks?
+7. **Path Namespace:** Am I confusing host paths (`/data/local/debian/...`) with container paths (`/...`) in host orchestrators?
+8. **Supervisor Guarding:** Does PM2 command invocation avoid trailing `--` traps when arguments are absent?
+9. **Documentation Privacy:** Does this documentation change keep private LAN endpoints (`:8081`) out of the public `docs/` tree?

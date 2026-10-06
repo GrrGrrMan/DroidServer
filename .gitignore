@@ -1,0 +1,13 @@
+# Gitignore-style list of patterns to ignore
+.venv
+.pio
+__pycache__
+.git
+node_modules
+.DS_Store
+*.log
+.cache
+
+# Oppo A91 Private & Local Sandboxes
+workloads/_local/*
+!workloads/_local/.gitkeep

@@ -31,6 +31,13 @@ if [ -d "$STAGE/home/oppo" ]; then
   chown -R 1000:1000 "$CHROOT/home/oppo"
 fi
 
+# Sync pm2/ (ecosystem process configurations)
+if [ -d "$STAGE/pm2" ]; then
+  mkdir -p "$CHROOT/etc/pm2"
+  cp -rf "$STAGE/pm2/." "$CHROOT/etc/pm2/"
+  chown -R 1000:1000 "$CHROOT/etc/pm2"
+fi
+
 # Clean up temporary stage buffer
 rm -rf "$STAGE"
 echo "Container files deployed successfully."

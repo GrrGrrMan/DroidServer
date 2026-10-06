@@ -84,7 +84,8 @@ The device uses soldered, non-replaceable UFS 2.1 NAND flash:
 | **Chrony NTP** | UDP `:123` (Client) | Debian Root | Root PM2 (`chrony`) |
 | **Network Watchdog** | Layer 3 Keepalive | Debian Root | Root PM2 (`net-watchdog`) |
 | **PM2 Logrotate** | Memory Guard (5MB cap) | Debian Root & `oppo` | PM2 Module (`pm2-logrotate`) |
-| **Docsify Portal** | TCP `:8080` | Debian (`oppo`) | User PM2 (`docs-portal`) |
+| **Platform Docs Portal** | TCP `:8080` | Debian (`oppo`) | User PM2 (`platform-docs`) |
+| **Workload App Registry** | TCP `:8081` | Debian (`oppo`) | User PM2 (`app-docs`) |
 | **Mosquitto MQTT** | TCP `:1883` | Debian (`mosquitto`) | `/etc/init.d/mosquitto` (Pending) |
 | **OmniRoute Proxy** | TCP `:20128` | Debian (`oppo`) | User PM2 (`omniroute` - Pending) |
 | **AliShopper Worker**| TCP `:20129` | Debian (`oppo`) | User PM2 (`alishopper` - Pending) |

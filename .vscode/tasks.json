@@ -21,9 +21,9 @@
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
-      "label": "Phone: Run Container Provisioning (ADB)",
+      "label": "Phone: Deploy Workloads (ADB)",
       "type": "shell",
-      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/run_provision.ps1",
+      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/deploy_workload.ps1",
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
@@ -33,9 +33,15 @@
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
-      "label": "Phone: Sync Docs to Phone (SCP)",
+      "label": "Phone: Sync Platform Docs (SCP)",
       "type": "shell",
       "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Phone: Sync App Docs (SCP)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_app_docs.ps1",
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
