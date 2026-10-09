@@ -132,16 +132,25 @@ while [ $TIMEOUT -gt 0 ]; do
   TIMEOUT=$((TIMEOUT - 1))
 done
 
-# 5. Lock default gateway in routing table 'main'
-GATEWAY=$(ip route show dev wlan0 | grep default | awk '{print $3}')
+# 5. Lock default gateway in the 'main' routing table
+# Scans all routing tables to capture Android netd's interface-specific gateway
+GATEWAY=$(ip route show table all 2>/dev/null | grep "default via" | grep "$IFACE" | head -n 1 | awk '{print $3}')
+[ -z "$GATEWAY" ] && GATEWAY=$(getprop dhcp.${IFACE}.gateway)
 [ -z "$GATEWAY" ] && GATEWAY="192.168.1.1"
-ip route add default via "$GATEWAY" dev wlan0 table main 2>/dev/null || true
-ip rule add from all lookup main pref 30000 2>/dev/null || true
 
-# 6. Launch container daemons
+if [ -n "$GATEWAY" ]; then
+  ip route replace default via "$GATEWAY" dev "$IFACE" table main 2>/dev/null || true
+  ip rule add from all lookup main pref 30000 2>/dev/null || true
+fi
+
+# 6. Launch container platform daemons
 /data/local/bin/chroot-debian.sh "/usr/sbin/sshd"
 /data/local/bin/chroot-debian.sh "pm2 resurrect"
-/data/local/bin/chroot-debian.sh "su - oppo -c 'pm2 resurrect'"
+
+# Dynamically resolve non-root container username from sudoers
+SERVER_USER=$(grep -h -r "NOPASSWD" /data/local/debian/etc/sudoers.d/ 2>/dev/null | head -n 1 | awk '{print $1}')
+[ -z "$SERVER_USER" ] && SERVER_USER="oppo"
+/data/local/bin/chroot-debian.sh "su - $SERVER_USER -c 'pm2 resurrect'"
 
 # 7. Settle network tunnels
 sleep 15

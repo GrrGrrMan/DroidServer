@@ -1,20 +1,11 @@
 module.exports = {
   apps: [
     {
-      name: "platform-docs",
+      name: "docs",
       script: "/usr/bin/python3",
-      args: "-m http.server 8080 --directory /var/www/oppo-docs",
-      out_file: "/dev/shm/platform-docs.log",
-      error_file: "/dev/shm/platform-docs.err",
-      restart_delay: 5000,
-      autorestart: true
-    },
-    {
-      name: "app-docs",
-      script: "/usr/bin/python3",
-      args: "-m http.server 8081 --directory /var/www/oppo-app-docs",
-      out_file: "/dev/shm/app-docs.log",
-      error_file: "/dev/shm/app-docs.err",
+      args: "-m http.server 8080 --directory /var/www/docs",
+      out_file: "/dev/shm/docs.log",
+      error_file: "/dev/shm/docs.err",
       restart_delay: 5000,
       autorestart: true
     }

@@ -29,25 +29,13 @@
     {
       "label": "Phone: Container Userland Soft-Restart",
       "type": "shell",
-      "command": "adb -s 192.168.1.35:5555 shell \"su -c 'pkill -u oppo; /data/local/bin/chroot-debian.sh /usr/sbin/sshd'\"",
+      "command": "@'\nUSER=$(grep -h -r 'NOPASSWD' /data/local/debian/etc/sudoers.d/ 2>/dev/null | head -n 1 | awk '{print $1}')\n[ -z \"$USER\" ] && USER='oppo'\npkill -u \"$USER\"\n/data/local/bin/chroot-debian.sh /usr/sbin/sshd\n'@ | adb shell su",
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
-      "label": "Phone: Sync All Docs (SCP)",
+      "label": "Phone: Sync Documentation Portal (SCP)",
       "type": "shell",
-      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1 -Target all",
-      "presentation": { "reveal": "always", "panel": "shared" }
-    },
-    {
-      "label": "Phone: Sync Platform Docs (:8080)",
-      "type": "shell",
-      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1 -Target platform",
-      "presentation": { "reveal": "always", "panel": "shared" }
-    },
-    {
-      "label": "Phone: Sync App Registry (:8081)",
-      "type": "shell",
-      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1 -Target app",
+      "command": "powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1",
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {

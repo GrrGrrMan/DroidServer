@@ -4,7 +4,24 @@ param (
   [string]$Action = "install"
 )
 
-$TARGET = "192.168.1.35:5555"
+# Default parameters
+$DEVICE_IP = "192.168.1.35"
+$ADB_PORT = "5555"
+
+# Load local config.env if present
+$ConfigFile = Join-Path $PSScriptRoot "..\config.env"
+if (Test-Path $ConfigFile) {
+  Get-Content $ConfigFile | ForEach-Object {
+    if ($_ -match '^\s*([^#=]+)\s*=\s*"?([^"#]*)"?') {
+      $k = $matches[1].Trim()
+      $v = $matches[2].Trim()
+      if ($k -eq "DEVICE_IP") { $DEVICE_IP = $v }
+      if ($k -eq "ADB_PORT") { $ADB_PORT = $v }
+    }
+  }
+}
+
+$TARGET = "${DEVICE_IP}:${ADB_PORT}"
 $STAGE = "/data/local/tmp/workloads_stage"
 $CHROOT_TMP = "/data/local/debian/tmp/workloads"
 

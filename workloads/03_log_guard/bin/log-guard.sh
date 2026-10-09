@@ -1,5 +1,6 @@
 #!/bin/bash
 # log-guard.sh - Bounded memory guard protecting RAM tmpfs buffers (/dev/shm)
+shopt -s nullglob
 MAX_BYTES=5242880 # 5MB
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Log guard active. Capping /dev/shm logs at 5MB."

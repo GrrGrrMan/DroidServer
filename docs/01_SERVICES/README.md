@@ -84,12 +84,11 @@ The device uses soldered, non-replaceable UFS 2.1 NAND flash:
 | **Chrony NTP** | UDP `:123` (Client) | Debian Root | Root PM2 (`chrony`) |
 | **Network Watchdog** | Layer 3 Keepalive | Debian Root | Root PM2 (`net-watchdog`) |
 | **Log Guard Daemon** | Memory Guard (5MB cap) | Debian Root | Root PM2 (`log-guard`) |
-| **Platform Docs Portal** | TCP `:8080` | Debian (`oppo`) | User PM2 (`platform-docs`) |
-| **Workload App Registry** | TCP `:8081` | Debian (`oppo`) | User PM2 (`app-docs`) |
+| **Documentation Portal** | TCP `:8080` | Debian (`oppo`) | User PM2 (`docs`) |
 
 ---
 
-## 4. THE MODULAR WORKLOAD ARCHITECTURE (PORT :8081 REGISTRY)
+## 4. THE MODULAR WORKLOAD ARCHITECTURE
 
 To protect system integrity and eliminate documentation drift, application workloads are decoupled from the public platform documentation:
 
@@ -98,7 +97,7 @@ To protect system integrity and eliminate documentation drift, application workl
    * `install.sh`: Idempotent installation script using flash-safe helpers from `workloads/_lib/helpers.sh`.
    * `uninstall.sh`: Clean, reversible teardown script purging packages, PM2 entries, and state.
    * `docs.md`: Dedicated service runbook, port bindings, and health checks.
-2. **Private LAN Registry (`:8081`):**  
-   All `docs.md` files from `workloads/` (and private uncommitted modules in `workloads/_local/`) are dynamically aggregated into the Workload Registry served at `http://192.168.1.35:8081` via `sync_docs.ps1 -Target app`.
+2. **Unified Documentation Overlay (`:8080`):**  
+   All `docs.md` files from `workloads/` (and private uncommitted modules in `workloads/_local/`) are dynamically compiled into the Documentation Portal at `/var/www/docs/apps/` via `sync_docs.ps1` and served alongside platform runbooks on port `8080`.
 3. **Blueprint Standard:**  
    When drafting a new workload, use `workloads/_TEMPLATE/` as the implementation template and `docs/01_SERVICES/_TEMPLATE.md` as the operational contract reference.

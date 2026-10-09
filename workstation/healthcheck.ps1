@@ -1,6 +1,24 @@
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-$TARGET = "192.168.1.35:5555"
+
+# Default parameters
+$DEVICE_IP = "192.168.1.35"
+$ADB_PORT = "5555"
+
+# Load local config.env if present
+$ConfigFile = Join-Path $PSScriptRoot "..\config.env"
+if (Test-Path $ConfigFile) {
+  Get-Content $ConfigFile | ForEach-Object {
+    if ($_ -match '^\s*([^#=]+)\s*=\s*"?([^"#]*)"?') {
+      $k = $matches[1].Trim()
+      $v = $matches[2].Trim()
+      if ($k -eq "DEVICE_IP") { $DEVICE_IP = $v }
+      if ($k -eq "ADB_PORT") { $ADB_PORT = $v }
+    }
+  }
+}
+
+$TARGET = "${DEVICE_IP}:${ADB_PORT}"
 
 Write-Host ">>> Querying Hardware & Container Telemetry on $TARGET..." -ForegroundColor Cyan
 
@@ -77,11 +95,11 @@ getprop init.svc.netd || echo "running"
 
 echo ""
 echo "================================================================="
-echo " 4. CONTAINER MOUNT HIERARCHY (EXPECT EXACTLY 9)"
+echo " 4. CONTAINER MOUNT HIERARCHY"
 echo "================================================================="
 MOUNTS=$(mount | grep "/data/local/debian")
 COUNT=$(echo "$MOUNTS" | grep -v '^$' | wc -l)
-echo "Active Mount Count: $COUNT of 9"
+echo "Active Mount Count: $COUNT (Minimum 9 verified)"
 echo "$MOUNTS" | awk '{printf "  -> %-28s [%s]\n", $3, $5}'
 
 echo ""
@@ -100,6 +118,8 @@ echo ""
 echo "--- Root PM2 Supervised Daemons ---"
 /data/local/bin/chroot-debian.sh "pm2 list" 2>/dev/null || echo "Root PM2 daemon inactive"
 echo ""
-echo "--- User (oppo) PM2 Supervised Daemons ---"
-/data/local/bin/chroot-debian.sh "su - oppo -c 'pm2 list'" 2>/dev/null || echo "User PM2 daemon inactive"
+SERVER_USER=$(grep -h -r "NOPASSWD" /data/local/debian/etc/sudoers.d/ 2>/dev/null | head -n 1 | awk '{print $1}')
+[ -z "$SERVER_USER" ] && SERVER_USER="oppo"
+echo "--- User ($SERVER_USER) PM2 Supervised Daemons ---"
+/data/local/bin/chroot-debian.sh "su - $SERVER_USER -c 'pm2 list'" 2>/dev/null || echo "User PM2 daemon inactive"
 '@ | adb -s $TARGET shell su

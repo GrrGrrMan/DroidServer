@@ -9,6 +9,13 @@ log_success() { echo -e "\033[0;32m[OK]\033[0m    $*"; }
 log_warn()    { echo -e "\033[0;33m[WARN]\033[0m  $*"; }
 log_err()     { echo -e "\033[0;31m[ERR]\033[0m   $*"; }
 
+get_server_user() {
+  local user
+  user=$(grep -h -r "NOPASSWD" /etc/sudoers.d/ 2>/dev/null | head -n 1 | awk '{print $1}')
+  [ -z "$user" ] && user="oppo"
+  echo "$user"
+}
+
 # 1. Flash-Safe APT Batch Installer
 install_apt_manifest() {
   local manifest="$1"
@@ -35,7 +42,6 @@ install_apt_manifest() {
     log_info "Installing missing packages:$missing"
     apt-get update
     apt-get install -y --no-install-recommends $missing
-    # UFS Flash Protection: Eliminate cached .deb archives immediately
     apt-get clean
     rm -rf /var/lib/apt/lists/*
     log_success "Packages successfully installed:$missing"
@@ -85,11 +91,16 @@ install_deb_url() {
 
   log_info "Downloading $bin_name to RAM tmpfs (/tmp)..."
   local tmp_deb="/tmp/${bin_name}.deb"
-  curl -sL "$url" -o "$tmp_deb"
+  if ! curl -fsSL "$url" -o "$tmp_deb"; then
+    log_err "Failed to download $bin_name from $url"
+    rm -f "$tmp_deb"
+    return 1
+  fi
 
   log_info "Installing $bin_name via APT..."
   apt-get install -y "$tmp_deb"
   rm -f "$tmp_deb"
+  apt-get clean
   log_success "$bin_name installed successfully."
 }
 
@@ -126,7 +137,7 @@ register_pm2_root() {
       --error "/dev/shm/${name}.err"
   fi
   pm2 save
-  log_success "PM2 daemon $name registered and state saved."
+  log_success "PM2 root daemon $name registered and state saved."
 }
 
 # 6. Root PM2 Teardown Helper
@@ -136,5 +147,37 @@ unregister_pm2_root() {
   pm2 delete "$name" 2>/dev/null || true
   pm2 save
   rm -f "/dev/shm/${name}.log" "/dev/shm/${name}.err"
-  log_success "PM2 daemon $name removed."
+  log_success "PM2 root daemon $name removed."
+}
+
+# 7. User PM2 Registration Helper (Runs under non-root server user)
+register_pm2_user() {
+  local name="$1"
+  local script_path="$2"
+  shift 2
+
+  local user
+  user=$(get_server_user)
+  log_info "Registering User ($user) PM2 daemon: $name"
+
+  su - "$user" -c "pm2 delete '$name' 2>/dev/null || true"
+  if [ $# -gt 0 ]; then
+    su - "$user" -c "pm2 start '$script_path' --name '$name' --output '/dev/shm/${name}.log' --error '/dev/shm/${name}.err' -- $*"
+  else
+    su - "$user" -c "pm2 start '$script_path' --name '$name' --output '/dev/shm/${name}.log' --error '/dev/shm/${name}.err'"
+  fi
+  su - "$user" -c "pm2 save"
+  log_success "PM2 user daemon $name registered and state saved."
+}
+
+# 8. User PM2 Teardown Helper
+unregister_pm2_user() {
+  local name="$1"
+  local user
+  user=$(get_server_user)
+  log_info "Unregistering User ($user) PM2 daemon: $name"
+  su - "$user" -c "pm2 delete '$name' 2>/dev/null || true"
+  su - "$user" -c "pm2 save"
+  rm -f "/dev/shm/${name}.log" "/dev/shm/${name}.err"
+  log_success "PM2 user daemon $name removed."
 }

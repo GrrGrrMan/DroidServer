@@ -1,29 +1,32 @@
 #!/bin/bash
-GATEWAY="192.168.1.1"
-STATIC_IP="192.168.1.35/24"
 IFACE="wlan0"
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Network watchdog active for $IFACE -> $GATEWAY"
+get_active_gateway() {
+  local gw
+  gw=$(ip route show table all 2>/dev/null | grep "default via" | grep "$IFACE" | head -n 1 | awk '{print $3}')
+  [ -z "$gw" ] && gw=$(getprop dhcp.${IFACE}.gateway 2>/dev/null)
+  echo "$gw"
+}
+
+GW=$(get_active_gateway)
+[ -z "$GW" ] && GW="192.168.1.1"
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Network watchdog active for $IFACE (Initial Gateway: $GW)"
 
 while true; do
   sleep 45
-  # Ping gateway with 2-second timeout
-  if ! ping -c 1 -W 2 "$GATEWAY" >/dev/null 2>&1; then
+  CURRENT_GW=$(get_active_gateway)
+  [ -n "$CURRENT_GW" ] && GW="$CURRENT_GW"
+
+  if ! ping -c 1 -W 2 "$GW" >/dev/null 2>&1; then
     sleep 3
-    # Double check before taking recovery action
-    if ! ping -c 1 -W 2 "$GATEWAY" >/dev/null 2>&1; then
-      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Gateway $GATEWAY unreachable! Restoring Layer 3 network..."
-      
-      # 1. Bring interface up and assert static IP
+    if ! ping -c 1 -W 2 "$GW" >/dev/null 2>&1; then
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Gateway $GW unreachable! Re-asserting Layer 3 route in table main..."
       ip link set "$IFACE" up 2>/dev/null
-      ip addr replace "$STATIC_IP" dev "$IFACE" 2>/dev/null
-      
-      # 2. Restore default gateway in table main
-      ip route replace default via "$GATEWAY" dev "$IFACE" table main 2>/dev/null
+      ip route replace default via "$GW" dev "$IFACE" table main 2>/dev/null || true
       ip rule add from all lookup main pref 30000 2>/dev/null || true
-      
-      # 3. Verify recovery
-      if ping -c 1 -W 2 "$GATEWAY" >/dev/null 2>&1; then
+
+      if ping -c 1 -W 2 "$GW" >/dev/null 2>&1; then
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Gateway connectivity successfully restored."
       else
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Gateway still unreachable. Will retry on next cycle."

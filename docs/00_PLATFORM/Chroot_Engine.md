@@ -39,9 +39,10 @@ This master host script handles filesystem binding, host bind-mount exposition, 
 #!/system/bin/sh
 CHROOT_DIR="/data/local/debian"
 
-# 0. Enforce host network hostname and setuid binaries on /data
-setprop net.hostname oppo
-mount -o remount,suid /data
+# 0. Sync hostname, enforce SUID, and disable flash atime overhead on /data
+HOST_NAME=$(cat "$CHROOT_DIR/etc/hostname" 2>/dev/null || echo "oppo")
+setprop net.hostname "$HOST_NAME"
+mount -o remount,suid,noatime /data
 
 # 1. Mount virtual kernel filesystems using /proc/mounts checks (prevents duplicate stacking)
 grep -qs " $CHROOT_DIR/proc " /proc/mounts || mount -t proc proc "$CHROOT_DIR/proc"
@@ -72,20 +73,39 @@ mkdir -p "$CHROOT_DIR/run/sshd"
 chmod 0755 "$CHROOT_DIR/run/tailscale"
 chmod 0755 "$CHROOT_DIR/run/sshd"
 
-# 2. Sync host DNS nameserver
-NAMESERVER=$(getprop net.dns1)
-[ -n "$NAMESERVER" ] && echo "nameserver $NAMESERVER" > "$CHROOT_DIR/etc/resolv.conf"
-echo "nameserver 1.1.1.1" >> "$CHROOT_DIR/etc/resolv.conf"
-echo "nameserver 8.8.8.8" >> "$CHROOT_DIR/etc/resolv.conf"
+# 2. In-Memory DNS: Ensure /etc/resolv.conf is a relative symlink to RAM tmpfs (/run/resolv.conf)
+if [ ! -L "$CHROOT_DIR/etc/resolv.conf" ]; then
+  rm -f "$CHROOT_DIR/etc/resolv.conf"
+  ln -sf ../run/resolv.conf "$CHROOT_DIR/etc/resolv.conf"
+fi
+
+# Dynamically populate/refresh DNS in RAM tmpfs (zero flash wear)
+PRIMARY_DNS=$(getprop net.dns1)
+SECONDARY_DNS=$(getprop net.dns2)
+if [ -n "$PRIMARY_DNS" ]; then
+  {
+    echo "nameserver $PRIMARY_DNS"
+    [ -n "$SECONDARY_DNS" ] && echo "nameserver $SECONDARY_DNS"
+    echo "nameserver 1.1.1.1"
+    echo "nameserver 8.8.8.8"
+  } > "$CHROOT_DIR/run/resolv.conf"
+elif [ ! -s "$CHROOT_DIR/run/resolv.conf" ]; then
+  {
+    echo "nameserver 1.1.1.1"
+    echo "nameserver 8.8.8.8"
+  } > "$CHROOT_DIR/run/resolv.conf"
+fi
 
 # 3. Clean POSIX Linux environment definition
 ENV_CMD="/usr/bin/env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HOME=/root USER=root TERM=xterm-256color LANG=C.UTF-8"
 
-# 4. Execute passed command or open interactive bash login shell
-if [ -n "$1" ]; then
-  chroot "$CHROOT_DIR" $ENV_CMD /bin/bash -c "$*"
+# 4. Execute passed command or open interactive bash login shell (Exec-safe)
+if [ $# -eq 0 ]; then
+  exec chroot "$CHROOT_DIR" $ENV_CMD /bin/bash --login
+elif [ $# -eq 1 ]; then
+  exec chroot "$CHROOT_DIR" $ENV_CMD /bin/bash -c "$1"
 else
-  chroot "$CHROOT_DIR" $ENV_CMD /bin/bash --login
+  exec chroot "$CHROOT_DIR" $ENV_CMD "$@"
 fi
 ```
 

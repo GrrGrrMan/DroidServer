@@ -29,7 +29,6 @@ This documentation uses a decoupled, three-tier architecture. Adding or modifyin
 ```text
 OppoA91/
 ├── Brief / Meta            <── (YOU ARE HERE) Global parameters, taxonomy, dynamic health
-│   └── Agent_Directives    <── Operational contract, anti-hallucination guardrails
 │
 ├── 00_PLATFORM             <── INVARIANTS: Hardware, Android host, BROM unbrick, chroot engine
 │   ├── Hardware_Power      <── 4.00V calibration, BMS sleep-jump, PMIC latching, grounding
@@ -37,11 +36,14 @@ OppoA91/
 │   ├── Chroot_Engine       <── Mount namespace script, suid userdata, OpenSSH, surgical ctl.stop
 │   └── Runtime_Essentials  <── Node 24 LTS, Python 3.11, PM2 supervisor, UFS tmpfs caching
 │
-└── 01_SERVICES             <── WORKLOAD CONTRACTS & CORE INFRASTRUCTURE
-    ├── _TEMPLATE           <── Master contract: blueprint for modular workloads
-    ├── Docs_Portal         <── Dual Docsify engines (:8080 platform & :8081 registry)
-    ├── Tailscale           <── Zero-trust mesh VPN overlay & passwordless SSH
-    └── Playwright          <── Anti-pattern case study: browser workload ban
+├── 01_SERVICES             <── WORKLOAD CONTRACTS & CORE INFRASTRUCTURE
+│   ├── _TEMPLATE           <── Master contract: blueprint for modular workloads
+│   ├── Docs_Portal         <── Single Docsify portal (:8080) with dynamic workload overlay
+│   ├── Tailscale           <── Zero-trust mesh VPN overlay & passwordless SSH
+│   └── Playwright          <── Anti-pattern case study: browser workload ban
+│
+└── hardware                <── DEVICE CASE STUDIES & HARDWARE SPECIFICS
+    └── oppo_a91            <── 4.00V calibration, BMS sleep-jump, MTK BROM unbricking
 ```
 
 ---

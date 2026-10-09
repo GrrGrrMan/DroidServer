@@ -1,14 +1,44 @@
-# Gitignore-style list of patterns to ignore
-.venv
-.pio
-__pycache__
-.git
-node_modules
-.DS_Store
-*.log
-.cache
+# Environment & local deployment configuration
+config.env
+*.env.local
 
-# Oppo A91 Private & Local Sandboxes
+# Private keys, authorized keys, and host credentials
+authorized_keys
+!authorized_keys.example
+*.pem
+*.key
+*.pub
+id_*
+adbkey*
+
+# Private local workloads (keep .gitkeep)
 workloads/_local/*
 !workloads/_local/.gitkeep
-container/home/oppo/.ssh/authorized_keys
+
+# LLM exports & workspace context dumps
+input_file_*.txt
+*.prompt
+.contextignore
+
+# PM2 runtime state dumps
+*.dump.pm2
+root_dump.pm2
+
+# Ephemeral staging & log files
+*.log
+*.err
+/workloads_stage/
+/container_stage/
+
+# Build, Python, Node, & OS artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+.npm/
+.DS_Store
+Thumbs.db
+
+# VS Code state
+.vscode/*
+!.vscode/tasks.json

@@ -49,7 +49,7 @@ powershell -ExecutionPolicy Bypass -File ./workstation/healthcheck.ps1
 | **Battery Status** | `Not charging` | Normal for OEM BMS dummy battery with unpopulated thermistor lines |
 | **SoC Thermals** | `25°C` – `50°C` | Cool idle under passive heatsinks; values of `-127°C` are unpopulated channels |
 | **Container Mounts** | Exactly `9 of 9` | `proc`, `sys`, `dev`, `dev/pts`, `dev/shm`, `run`, `tmp`, `mnt/adb`, `mnt/host-bin` |
-| **Active Gateway** | Pinned in `table main` | Pinned default route via `192.168.1.1` preventing network isolation |
+| **Active Gateway** | Pinned in `table main` | Pinned default route via active subnet gateway preventing network isolation |
 | **Netd Status** | `running` | Native Linux network manager preserved; DNS and routing tables intact |
 
 ---
