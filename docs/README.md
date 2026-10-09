@@ -27,7 +27,7 @@
 This documentation uses a decoupled, three-tier architecture. Adding or modifying application modules under `01_SERVICES` requires zero edits to parent platform tabs.
 
 ```text
-OppoA91/
+DroidServer/
 ├── Brief / Meta            <── (YOU ARE HERE) Global parameters, taxonomy, dynamic health
 │
 ├── 00_PLATFORM             <── INVARIANTS: Hardware, Android host, BROM unbrick, chroot engine

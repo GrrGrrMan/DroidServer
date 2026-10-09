@@ -78,4 +78,4 @@ powershell -ExecutionPolicy Bypass -File ./workstation/sync_docs.ps1
 * **Tailscale SSH:** `ssh oppo@oppo-server` (Keyless out-of-band mesh)
 * **Wireless ADB:** `adb connect <device-ip>:5555`
 * **Documentation Portal:** `http://<device-ip>:8080` (Consolidated single-port portal)
-* **Out-of-Band Docs:** `https://grrgrrman.github.io/OppoA91/`
+* **Out-of-Band Docs:** `https://grrgrrman.github.io/DroidServer/`
