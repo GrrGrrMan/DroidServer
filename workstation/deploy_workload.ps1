@@ -23,6 +23,9 @@ if (Test-Path $ConfigFile) {
 
 $TARGET = "${DEVICE_IP}:${ADB_PORT}"
 $STAGE = "/data/local/tmp/workloads_stage"
+
+# Ensure active ADB transport connection before executing tasks
+adb connect $TARGET | Out-Null
 $CHROOT_TMP = "/data/local/debian/tmp/workloads"
 
 Write-Host ">>> Staging Workloads to $TARGET (RAM tmpfs)..." -ForegroundColor Cyan

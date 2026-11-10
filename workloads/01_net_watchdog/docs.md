@@ -10,8 +10,11 @@
 
 * **Monitored Interface:** `wlan0`
 * **Gateway Target:** Dynamically resolved from Android routing tables (`ip route show table all`) and DHCP properties (`getprop dhcp.wlan0.gateway`), polled via ICMP every 45 seconds.
+* **Dependencies:** `iputils-ping` (Mandatory; missing binary trips false-positive exit code 127).
+* **Logging Architecture:** **Edge-Triggered (State-Aware)**. Logs strictly on transition states (`OK -> DOWN` and `DOWN -> OK`) to prevent memory/log saturation in RAM `tmpfs` during persistent router outages.
 * **Failure Actions (Self-Healing):**
   1. Executes a secondary confirmation check after 3 seconds to avoid reacting to temporary Wi-Fi jitter.
   2. Re-asserts interface link state: `ip link set wlan0 up`
   3. Re-pins the discovered default route into routing `table main`: `ip route replace default via $GW dev wlan0 table main`
   4. Restores policy routing rule: `ip rule add from all lookup main pref 30000`
+  5. Backs off for 300 seconds if underlying binaries are absent.

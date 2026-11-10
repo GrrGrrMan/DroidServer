@@ -4,3 +4,4 @@ tmux
 curl
 jq
 ncdu
+iputils-ping
